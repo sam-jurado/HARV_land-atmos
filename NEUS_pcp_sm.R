@@ -165,6 +165,7 @@ gg1+
 install.packages("anytime")   # Install anytime package
 library(lubridate)
 library(dplyr)
+library(readr)
 library("anytime")   
 
 setwd("/Users/jurado/Harvard_Forest")
@@ -219,26 +220,36 @@ df_prcp$date <- list_of_dates
 
 df_prcp["prec_mm"][df_prcp["prec_mm"] == 0] <- NA
 
+#this is for checking how rain event frequency has changed over time 
+#df_prcp["prec_mm"][df_prcp["prec_mm"] > 20] <- NA
+
+#Which months are we looking at
+df_prcp["prec_mm"][df_prcp["month"] <5 | df_prcp["month"] >9] <- NA
 
 #for loop to get and store the top 1% per year.
 
 perc_hvy <- c()
 num_hvy <- c()
 sum_hvy <- c()
-
-
-
+prec_number <- c()
 Q <- c()
+
+
+
 for(x in 1964:2023){
   x <- toString(x)
   print(x)
   df_prcp <- df_prcp[df_prcp$date >= paste(x,"01-01",sep = "-") &   df_prcp$date <= paste(x,"12-31",sep = "-"), ]
   q <- quantile(df_prcp$prec_mm, prob=c(.90), type=1, na.rm =TRUE)
   Q <- append(Q,q)
+  
+  prec_number <- append(prec_number,length(na.omit(df_prcp$prec_mm)))
+  
   prcp_sum <- sum(df_prcp$prec_mm, na.rm = TRUE)
   df_prcp <- df_prcp %>% filter( prec_mm >= q)
   
   prcp_H_sum <- sum(df_prcp$prec_mm, na.rm = TRUE)
+  
   prcp_num <- length(df_prcp$prec_mm)
   
   percent_heavy <- prcp_H_sum/prcp_sum*100
@@ -250,6 +261,11 @@ for(x in 1964:2023){
   print(percent_heavy)
   df_prcp <- read.csv("Downloads/dailyrain_19642023.csv")
   df_prcp["prec_mm"][df_prcp["prec_mm"] == 0] <- NA
+  
+  #df_prcp["prec_mm"][df_prcp["prec_mm"] > 20] <- NA
+  
+  df_prcp["prec_mm"][df_prcp["month"] >5 & df_prcp["month"] <9] <- NA
+  
   start_date <- as.Date("1964-01-01")  # Start date
   end_date <- as.Date("2023-12-31")    # End date
   list_of_dates <- seq(start_date, end_date, by = "day")
@@ -274,6 +290,17 @@ install.packages("Kendall")
 library(Kendall)
 
 Kendall(df_perc_hvy$Year,df_perc_hvy$perc_hvy)
+
+
+#####NUMBER OF RAIN EVENTS####
+
+plot(prec_number)
+
+
+
+
+
+
 
 #####SINCE 2000
 df_perc_hvy_2000 <- df_perc_hvy %>% filter(df_perc_hvy$Year > 2000)
@@ -342,12 +369,13 @@ lines(predict(lm(df_perc_hvy$frac~df_perc_hvy$Year)),col='black')
 
 
 
-#######Heavy Rains Top 10% over last 30yrs####
+#######Heavy Rains Top 10% by year####
 
 
 
 df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
 df_prcp["prec_mm"][df_prcp["prec_mm"] == 0] <- NA
+df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
 df_prcp$date <- as.Date(df_prcp$date, "%m/%d/%Y")
 df_prcp$date <- update(df_prcp$date, year = df_prcp$year)
 
@@ -361,6 +389,7 @@ for(x in 1964:2023){
   x <- toString(x)
   print(x)
   df_prcp <- df_prcp[df_prcp$date >= as.Date(paste(x,"01-01", sep ="-")) & df_prcp$date <= as.Date(paste(x,"12-31",sep = "-")), ]
+  df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
   q <- quantile(df_prcp$prec_mm, prob=c(.90), type=1, na.rm =TRUE)
   perc_90  <- append(perc_90 ,q)
   prcp_sum <- sum(df_prcp$prec_mm, na.rm = TRUE)
@@ -392,13 +421,70 @@ df_perc_hvy$Tot <- sum_hvy
 
 plot(df_perc_hvy$Year,df_perc_hvy$perc_hvy,type="b", xlab = "Year", ylab = "Rain Contributed by Heavy Storms [%]", lwd =2)
 abline(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year), lty = 2, lwd = 2)
-title(expression(paste(bold("Yearly Precip. Contributions of Heavy Rainfall "))))
-subtitle = "HEM 01/01/64 - 12/31/23"
+title(expression(paste(bold("Yearly Precip. Contributions of Heavy Rainfall"))))
+subtitle = "EMS 01/01/64 - 12/31/23"
 mtext(subtitle)
 
 summary(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year))
 
 
+
+
+############Top 10% over entire time period########
+
+
+
+
+
+df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
+df_prcp["prec_mm"][df_prcp["prec_mm"] == 0] <- NA
+df_prcp$date <- as.Date(df_prcp$date, "%m/%d/%Y")
+df_prcp$date <- update(df_prcp$date, year = df_prcp$year)
+
+
+perc_hvy <- c()
+sum_hvy <- c()
+
+df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
+q <- quantile(df_prcp$prec_mm, prob=c(.90), type=1, na.rm =TRUE)
+
+x=1964
+
+for(x in 1964:2023){
+  x <- toString(x)
+  print(x)
+  df_prcp <- df_prcp[df_prcp$date >= as.Date(paste(x,"01-01", sep ="-")) & df_prcp$date <= as.Date(paste(x,"12-31",sep = "-")), ]
+  df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
+  prcp_sum <- sum(df_prcp$prec_mm, na.rm = TRUE)
+  df_prcp <- df_prcp %>% filter( prec_mm >= q)
+  prcp_H_sum <- sum(df_prcp$prec_mm, na.rm = TRUE)
+  sum_hvy <- append(sum_hvy,prcp_H_sum)
+  percent_heavy <- prcp_H_sum/prcp_sum*100
+  perc_hvy <- append(perc_hvy,percent_heavy)
+  print(percent_heavy)
+  df_prcp <- 
+    df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
+  df_prcp["prec_mm"][df_prcp["prec_mm"] == 0] <- NA
+  df_prcp$date <- as.Date(df_prcp$date, "%m/%d/%Y")
+  df_prcp$date <- update(df_prcp$date, year = df_prcp$year)
+  print(q)
+}
+
+
+
+
+df_perc_hvy <- data.frame(perc_hvy)
+df_perc_hvy$Year <- seq(1964,2023,1)
+df_perc_hvy$Tot <- sum_hvy
+
+plot(df_perc_hvy$Year,df_perc_hvy$perc_hvy,type="b", xlab = "Year", ylab = "Rain Contributed by Heavy Storms [%]", lwd =2)
+abline(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year), lty = 2, lwd = 2)
+title(expression(paste(bold("Yearly Precip. Contributions of Heavy Rainfall "))))
+subtitle = "EMS, May - September, 1964 - 2023"
+mtext(subtitle)
+
+summary(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year))
+Kendall(df_perc_hvy$Year,df_perc_hvy$perc_hvy)
 
 
 

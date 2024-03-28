@@ -439,7 +439,7 @@ df_RH$datetime<- as.POSIXct(df_RH$datetime, format = "%Y-%m-%dT%H:%M:%S", tz = "
 
 LCL <- merge(df_anom,df_RH, by = "datetime")
 
-LCL <- data.frame(P.mean = LCL$P.mean, tempRHMean = LCL$tempRHMean, RHMean = LCL$RHMean, datetime = LCL$datetime )
+LCL <- data.frame(P.mean = LCL$P, tempRHMean = LCL$temp, RHMean = LCL$RH, datetime = LCL$datetime )
 
 
 
@@ -1050,7 +1050,7 @@ DELTA_LCLDAILY<- LCLDAILY %>% filter(LCLDAILY$LCL.avg - LCLDAILY$ABL.avg  > 0)
 library(readr)
 
 
-setwd("/Users/jurado/Downloads/")
+setwd("/Users/jurado/Downloads")
 Ha1_ETfill_9222 <- read_csv("Ha1_LEfill_9222.csv")
 
 Ha1_ETfill_9222$DateTime
@@ -1077,64 +1077,140 @@ Ha1_ETfill_9222 <- Ha1_ETfill_9222 %>% filter(Ha1_ETfill_9222$year >2016)
 colnames(Ha1_ETfill_9222)[10] <- "datetime"
 
 
+#########Using ungapfilled EMS Data#########
+
+
+setwd("/Users/jurado/Harvard_Forest")
+hfall_9223 <- read_csv("hfall_9223.csv")
+
+
+# Convert days since 1990 to POSIXct
+dates <- as.POSIXct("1990-01-01", origin = "1990-01-01", tz = "EST") + 
+  hfall_9223$seq_from_1990.days. * 86400
 
 
 
+#interpolating data into even 30 min intervals to be mergable with soil data
+hfall_9223$datetime <- dates
+
+
+#RH
+timestamps <- hfall_9223$datetime
+RH <- hfall_9223$RH.27.9m_.  # Example temperature data corresponding to the timestamps
+
+
+#Check in timezone is correct
+fig <- plot_ly(x = hfall_9223$datetime, y = hfall_9223$Ta.27.9m_deg.C, type = 'scatter', mode = 'lines'
+               
+               , name = 'Test')
+fig
+
+
+
+
+
+# Interpolate data to even 30-minute intervals
+interpolated_timestamps <- seq(min(timestamps), max(timestamps), by = "30 min")
+interpolated_RH <- approx(timestamps, RH, xout = interpolated_timestamps, na.rm=TRUE)$y
+
+#Temp
+temp <- hfall_9223$Ta.27.9m_deg.C  # Example temperature data corresponding to the timestamps
+
+# Interpolate data to even 30-minute intervals
+interpolated_timestamps <- seq(min(timestamps), max(timestamps), by = "30 min")
+interpolated_temp <- approx(timestamps, temp, xout = interpolated_timestamps,na.rm = TRUE)$y
+
+#Pressure
+P <- hfall_9223$Pamb_Pa  # Example temperature data corresponding to the timestamps
+
+# Interpolate data to even 30-minute intervals
+interpolated_P <- approx(timestamps, P, xout = interpolated_timestamps,na.rm = TRUE)$y
+
+
+hfall_9223_clean <- data.frame("datetime" =interpolated_timestamps, 
+                               "RH"= interpolated_RH,
+                               "temp"=interpolated_temp,
+                               "P"=interpolated_P )
+
+data_raw = nrow(hfall_9223_clean)
+
+hfall_9223_clean <- na.omit(hfall_9223_clean)
+
+data_clean = nrow(hfall_9223_clean)
+
+percent_removed = (1 - data_clean/data_raw) *100
+
+#21% of data is NA
+
+hfall_9223_clean$RH[hfall_9223_clean$RH > 100] <- 100
 
 
 
 #not the best merge, taking the actual values rather than average.
-LCL <- merge(Ha1_ETfill_9222,df_anom,by="datetime")
+LCL <- merge(hfall_9223_clean,df_anom,by="datetime")
 LCL <- merge(LCL,grand_pbl,by="datetime")
 
+#Need hours
+
+library(plotly)
+
+
+fig <- plot_ly(x = LCL$datetime, y = LCL$temp, type = 'scatter', mode = 'lines'
+               
+               , name = 'Test')
+fig
+
+
+LCL$hour <- hour(LCL$datetime)
+
+
+
+
+
 #still need LCL
-LCL_clean <- LCL[,c("datetime","VSWCAnom.mean.med","LE_f","RH_PI_F_1_2_1","hpbl","hour","PA_PI_F","TA_PI_F_1_2_1","H")]
+LCL_clean <- LCL[,c("datetime","VSWCAnom.mean.med","RH","hpbl","hour","P","temp")]
 
 
-LCL_clean <- LCL_clean[!is.na(LCL_clean$RH_PI_F_1_2_1), ]
-LCL_clean <- LCL_clean[!is.na(LCL_clean$TA_PI_F_1_2_1), ]
-LCL_clean <- LCL_clean[!is.na(LCL_clean$PA_PI_F), ]
+LCL_clean <- LCL_clean[!is.na(LCL_clean$RH), ]
+LCL_clean <- LCL_clean[!is.na(LCL_clean$temp), ]
+LCL_clean <- LCL_clean[!is.na(LCL_clean$P), ]
 
 
 
 #LCL input should have no Nans, RH should be 1 maximum
-LCL_clean$LCL <- lcl(p = LCL_clean$PA_PI_F*1000,T = LCL_clean$TA_PI_F_1_2_1+273.15,rh = LCL_clean$RH_PI_F_1_2_1/100)
+LCL_clean$LCL <- lcl(p = LCL_clean$P*1000,T = LCL_clean$temp+273.15,rh = LCL_clean$RH/100)
 
 
 LCLDIURNAL <- LCL_clean %>% group_by(hour) %>% summarise(LCL.avg = mean(LCL,na.rm=TRUE),
                                                          hpbl.avg = mean(hpbl,na.rm=TRUE),
                                                          swc.avg = mean(VSWCAnom.mean.med,na.rm=TRUE),
-                                                         LE.avg = mean(LE_f, na.rm =TRUE),
-                                                         H.avg = mean(H, na.rm = TRUE))
+                                                         )
 
 
 
-plot(LCLDIURNAL$hour,LCLDIURNAL$H.avg)
-lines(LCLDIURNAL$hour,LCLDIURNAL$LE.avg)
+
+quartiles <- quantile(LCL_clean$VSWCAnom.mean.med, probs=c(.25, .75), na.rm = TRUE)
+mean(LCL_clean$VSWCAnom.mean.med, na.rm= TRUE)
+
+LCL_DRY <- LCL_clean %>% filter(VSWCAnom.mean.med < -.001981223)
 
 
-quartiles <- quantile(LCL_clean$VSWCAnom.mean.med, probs=c(.10, .90), na.rm = TRUE)
-
-LCL_DRY <- LCL_clean %>% filter(VSWCAnom.mean.med < -.045)
-
-
-LCL_WET <- LCL_clean %>% filter(VSWCAnom.mean.med > 0.0338)
+LCL_WET <- LCL_clean %>% filter(VSWCAnom.mean.med > -.001981223)
 
 LCLDIURNAL_DRY <- LCL_DRY %>% group_by(hour) %>% summarise(LCL.avg = mean(LCL,na.rm=TRUE),
                                                            LCL.sd = sd(LCL,na.rm=TRUE),
                                                            hpbl.avg = mean(hpbl,na.rm=TRUE),
                                                            hpbl.sd = sd(hpbl,na.rm=TRUE),
                                                            swc.avg = mean(VSWCAnom.mean.med,na.rm=TRUE),
-                                                           LE.avg = mean(LE_f, na.rm =TRUE),
-                                                           H.avg = mean(H, na.rm = TRUE))
+                                                           )
 
 LCLDIURNAL_WET <- LCL_WET %>% group_by(hour) %>%  summarise(LCL.avg = mean(LCL,na.rm=TRUE),
                                                             LCL.sd = sd(LCL,na.rm=TRUE),
                                                             hpbl.avg = mean(hpbl,na.rm=TRUE),
                                                             hpbl.sd = sd(hpbl,na.rm=TRUE),
                                                             swc.avg = mean(VSWCAnom.mean.med,na.rm=TRUE),
-                                                            LE.avg = mean(LE_f, na.rm =TRUE),
-                                                            H.avg = mean(H, na.rm = TRUE))
+                                                           )
+
 
 
 LCLDIURNAL_DRY$LCL.err <- LCLDIURNAL_DRY$LCL.sd/sqrt(nrow(LCLDIURNAL_DRY))
@@ -1167,6 +1243,7 @@ arrows(LCLDIURNAL_WET$hour, y0 = LCLDIURNAL_WET$hpbl.avg  -  LCLDIURNAL_WET$hpbl
 
 title("Diurnal Average of LCL and ABL Heights")
 subtitle="HARV,EMS, & NARR June-September 2017-2022"
+
 mtext(subtitle)
 
 
@@ -1212,13 +1289,22 @@ y_polygon4 <- c(LCLDIURNAL_WET$hpbl.avg + LCLDIURNAL_WET$hpbl.err, rev(LCLDIURNA
 polygon(x_polygon4, y_polygon4, col = alpha("darkgreen", 0.3), border = NA)
 
 title("Diurnal Average of LCL and ABL Heights")
-subtitle="HARV,EMS, & NARR June-September 2017-2022"
+subtitle="HARV,EMS, & NARR June-September 2017-2023"
 mtext(subtitle)
 
 
+# Perform independent two-sample t-test
+result <- t.test(LCL_DRY$LCL, LCL_WET$LCL)
+
+# Print the result
+print(result)
 
 
+# Perform independent two-sample t-test
+result <- t.test(LCL_DRY$hpbl, LCL_WET$hpbl)
 
+# Print the result
+print(result)
 
 
 
