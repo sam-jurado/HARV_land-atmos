@@ -1126,15 +1126,41 @@ P <- hfall_9223$Pamb_Pa  # Example temperature data corresponding to the timesta
 # Interpolate data to even 30-minute intervals
 interpolated_P <- approx(timestamps, P, xout = interpolated_timestamps,na.rm = TRUE)$y
 
+#Sensible Heat
+H <- hfall_9223$Fheat_W.m2  # Example temperature data corresponding to the timestamps
+
+# Interpolate data to even 30-minute intervals
+interpolated_H <- approx(timestamps, H, xout = interpolated_timestamps,na.rm = TRUE)$y
+
+
+#Latent Heat
+LE <- hfall_9223$FH2O_e.3mol.m2.s  # Example temperature data corresponding to the timestamps
+
+# Interpolate data to even 30-minute intervals
+interpolated_LE <- approx(timestamps, LE, xout = interpolated_timestamps,na.rm = TRUE)$y
+
+
 
 hfall_9223_clean <- data.frame("datetime" =interpolated_timestamps, 
                                "RH"= interpolated_RH,
                                "temp"=interpolated_temp,
-                               "P"=interpolated_P )
+                               "P"=interpolated_P,
+                               "H" =interpolated_H ,
+                               "LE"= interpolated_LE)
 
 data_raw = nrow(hfall_9223_clean)
 
-hfall_9223_clean <- na.omit(hfall_9223_clean)
+
+#####clean only relevant ones
+
+hfall_9223_clean <- hfall_9223_clean %>%
+  filter(!is.na(RH) & !is.na(temp) & !is.na(P))
+
+
+
+
+
+
 
 data_clean = nrow(hfall_9223_clean)
 
@@ -1164,16 +1190,8 @@ fig
 LCL$hour <- hour(LCL$datetime)
 
 
-
-
-
 #still need LCL
-LCL_clean <- LCL[,c("datetime","VSWCAnom.mean.med","RH","hpbl","hour","P","temp")]
-
-
-LCL_clean <- LCL_clean[!is.na(LCL_clean$RH), ]
-LCL_clean <- LCL_clean[!is.na(LCL_clean$temp), ]
-LCL_clean <- LCL_clean[!is.na(LCL_clean$P), ]
+LCL_clean <- LCL[,c("datetime","VSWCAnom.mean.med","RH","hpbl","hour","P","temp","H","LE")]
 
 
 
@@ -1181,9 +1199,16 @@ LCL_clean <- LCL_clean[!is.na(LCL_clean$P), ]
 LCL_clean$LCL <- lcl(p = LCL_clean$P*1000,T = LCL_clean$temp+273.15,rh = LCL_clean$RH/100)
 
 
+
+
+
+
 LCLDIURNAL <- LCL_clean %>% group_by(hour) %>% summarise(LCL.avg = mean(LCL,na.rm=TRUE),
                                                          hpbl.avg = mean(hpbl,na.rm=TRUE),
                                                          swc.avg = mean(VSWCAnom.mean.med,na.rm=TRUE),
+                                                         H.avg = mean(H,na.rm =TRUE),
+                                                         LE.avg = mean(LE,na.rm =TRUE)
+                                                         
                                                          )
 
 
@@ -1202,6 +1227,8 @@ LCLDIURNAL_DRY <- LCL_DRY %>% group_by(hour) %>% summarise(LCL.avg = mean(LCL,na
                                                            hpbl.avg = mean(hpbl,na.rm=TRUE),
                                                            hpbl.sd = sd(hpbl,na.rm=TRUE),
                                                            swc.avg = mean(VSWCAnom.mean.med,na.rm=TRUE),
+                                                           H.avg = mean(H,na.rm =TRUE),
+                                                           LE.avg = mean(LE,na.rm =TRUE)
                                                            )
 
 LCLDIURNAL_WET <- LCL_WET %>% group_by(hour) %>%  summarise(LCL.avg = mean(LCL,na.rm=TRUE),
@@ -1209,6 +1236,8 @@ LCLDIURNAL_WET <- LCL_WET %>% group_by(hour) %>%  summarise(LCL.avg = mean(LCL,n
                                                             hpbl.avg = mean(hpbl,na.rm=TRUE),
                                                             hpbl.sd = sd(hpbl,na.rm=TRUE),
                                                             swc.avg = mean(VSWCAnom.mean.med,na.rm=TRUE),
+                                                            H.avg = mean(H,na.rm =TRUE),
+                                                            LE.avg = mean(LE,na.rm =TRUE)
                                                            )
 
 
@@ -1306,41 +1335,20 @@ result <- t.test(LCL_DRY$hpbl, LCL_WET$hpbl)
 # Print the result
 print(result)
 
+#What is H and LE like diurnally?
+#not statistically different.
+
+#What is the temperature and RH relationship?
 
 
+t.test(LCL_DRY$temp,LCL_WET$temp)
+
+t.test(LCL_DRY$RH,LCL_WET$RH)
 
 
+t.test(LCL_DRY$H,LCL_WET$H)
 
-
-
-
-
-
-
-
-####SHADING TEST####
-# Sample time series data
-set.seed(123)
-dates <- seq(as.Date("2022-01-01"), as.Date("2022-04-10"), by = "days")
-values <- rnorm(length(dates), mean = 10, sd = 2)
-ts_data <- data.frame(date = dates, value = values)
-
-# Calculate mean and standard deviation
-mean_value <- mean(ts_data$value)
-sd_value <- sd(ts_data$value)
-
-# Plot the time series line
-plot(ts_data$date, ts_data$value, type = "l", col = "blue", lwd = 2, main = "Shaded Area around Average Line", xlab = "Date", ylab = "Value")
-
-# Add the average line
-abline(h = mean_value, col = "red", lwd = 2)
-
-# Create x and y coordinates for the polygon
-x_polygon <- c(ts_data$date, rev(ts_data$date))
-y_polygon <- c(ts_data$value + sd_value, rev(ts_data$value - sd_value))
-
-# Add the shaded area
-polygon(x_polygon, y_polygon, col = alpha("red", 0.3), border = NA)
+t.test(LCL_DRY$LE,LCL_WET$LE)
 
 
 
@@ -1374,33 +1382,35 @@ arrows(binned$swc_avg,y0 = binned$hpbl.avg - binned$hpbl.std.err, binned$swc_avg
        code=3, angle=90, length=0.05, lwd = 1.5, col="darkgrey")
 arrows(binned$swc_avg,y0 = binned$LCL.avg - binned$LCL.std.err, binned$swc_avg, y1=binned$LCL.avg  + binned$LCL.std.err,
        code=3, angle=90, length=0.05, lwd = 1.5, col="darkgrey")
+abline(v=0.00, lwd =2, lty = 2,col ="lightgrey")
+
 legend("bottomleft",legend = c("ABL","LCL"),col = c("brown3","cadetblue4"), pch = c(1,2),
        pt.lwd = c(2,2), bty = "n")
 title("ABL and LCL Heights by Soil Moisture Anomaly")
-subtitle = "HARV & NARR Dataset, June - September 2016-2022"
+subtitle = "HARV, EMS, & NARR Dataset, June - September 2016-2023"
 mtext(subtitle)
 
+
 ####CROSSOVER EVENTS####
-LCL_prec <- merge(LCL_clean,Ha1_ETfill_9222,by="datetime", all=TRUE)
 
-LCL_prec_DRY <- LCL_prec %>% filter(LCL_prec$VSWCAnom.mean.med < 0)
-LCL_prec_DRY <- LCL_prec_DRY%>% filter(LCL_prec_DRY$P > 0)
-LCL_prec_WET <-LCL_prec %>% filter(LCL_prec$VSWCAnom.mean.med > 0)
-LCL_prec_WET <- LCL_prec_WET%>% filter(LCL_prec_WET$P > 0)
+setwd("/Users/jurado/")
+df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
 
-#make a column of days, get mean of LCL and ABL, get sum of rain for that day
-LCL_prec$date <- substr(as.character(LCL_prec$datetime), start = 1, stop = 10)
+start_date <- as.Date("1964-01-01")  # Start date
+end_date <- as.Date("2023-12-31")    # End date
+list_of_dates <- seq(start_date, end_date, by = "day")
+df_prcp$date <- list_of_dates
 
-LCL_DAILY <- LCL_prec %>% group_by(date) %>% summarise(LCL.avg = mean(LCL, na.rm=TRUE),
+LCL_clean$date <- date(LCL_clean$datetime)
+
+LCL_DAILY <- LCL_clean %>% group_by(date) %>% summarise(LCL.avg = mean(LCL, na.rm=TRUE),
                                                        LCL.sd = sd(LCL, na.rm=TRUE),
                                                        hpbl.avg = mean(hpbl, na.rm=TRUE),
                                                        hpbl.sd = sd(hpbl, na.rm=TRUE),
-                                                       prec = sum(P, na.rm=TRUE),
-                                                       swc.avg = mean(VSWCAnom.mean.med,na.rm=TRUE,
-                                                       LE.avg = mean(LE.f, na.rm = TRUE),
-                                                       H.avg = mean(H, na.rm=TRUE))
-                                                       )
+                                                       swc.avg = mean(VSWCAnom.mean.med,na.rm=TRUE
+                                                       ))
 
+LCL_DAILY <- merge(LCL_DAILY,df_prcp, by ="date")
 
 
 #do two graphs, on a histogram of rain patterns, and one bar chart comparing crossover
@@ -1414,16 +1424,21 @@ LCL_DAILY_DRY <- LCL_DAILY %>% filter(swc.avg < 0)
 LCL_DAILY_WET <- LCL_DAILY %>% filter(swc.avg > 0)
 
 LCL_CROSS_DRY_percent <- sum(LCL_DAILY_DRY$CROSSOVER ==TRUE)/length(LCL_DAILY_DRY$CROSSOVER)
-xLCL_CROSS_WET_percent <-  sum(LCL_DAILY_WET$CROSSOVER ==TRUE)/length(LCL_DAILY_WET$CROSSOVER)
+LCL_CROSS_WET_percent <-  sum(LCL_DAILY_WET$CROSSOVER ==TRUE)/length(LCL_DAILY_WET$CROSSOVER)
 
 LCL_CROSS_DRY_PREC_percent <- sum(LCL_DAILY_DRY$CROSSOVER_PREC ==TRUE)/length(LCL_DAILY_DRY$CROSSOVER_PREC)
 LCL_CROSS_WET_PREC_percent <-  sum(LCL_DAILY_WET$CROSSOVER_PREC ==TRUE)/length(LCL_DAILY_WET$CROSSOVER_PREC)
 
-#Comparing crossover percents 
 
+#% of times the LCL crosses the ABL when in Dry conditions = 68.64%
+#% of times the LCL crosses the ABL when in Wet conditions = 81.39%
+#% of times the LCL crosses the ABL when in Dry conditions and it rains =  36.23%
+#% of times the LCL crosses the ABL when in Wet conditions and it rains =  50%
 
+#Average amount of rain when we have crossover and it does rain = 
+mean(LCL_DAILY_DRY$prec_mm)
 
-
+mean(LCL_DAILY_WET$prec_mm)
 
 
 
@@ -1432,15 +1447,15 @@ LCL_CROSS_WET_PREC_percent <-  sum(LCL_DAILY_WET$CROSSOVER_PREC ==TRUE)/length(L
 
 
 #Histogram of rain patterns
-LCL_DAILY_DRY_prec <- LCL_DAILY_DRY %>% filter(prec > 1)
+LCL_DAILY_DRY_prec <- LCL_DAILY_DRY %>% filter(prec_mm > 1)
 
-LCL_DAILY_WET_prec <- LCL_DAILY_WET %>% filter(prec > 1)
+LCL_DAILY_WET_prec <- LCL_DAILY_WET %>% filter(prec_mm > 1)
 
 
 
-w <- hist(LCL_DAILY_WET_prec$prec,breaks=20)                     # Store histogram info
+w <- hist(LCL_DAILY_WET_prec$prec_mm,breaks=20)                     # Store histogram info
 w$density = w$counts/sum(w$counts)*100
-d <- hist(LCL_DAILY_DRY_prec$prec,breaks = 10)                     # Store histogram info
+d <- hist(LCL_DAILY_DRY_prec$prec_mm,breaks = 10)                     # Store histogram info
 d$density = d$counts/sum(d$counts)*100
 
 plot(d,freq=FALSE, col =alpha("brown",.8), xlim = c(0,100),ylim = c(0,70), main="",
@@ -1455,22 +1470,52 @@ subtitle="HARV & EMS June-September 2017-2023"
 mtext(subtitle)
 par(new = TRUE) 
 
-DRY_med <- mean(LCL_DAILY_DRY_prec$prec)
-WET_med <- mean(LCL_DAILY_WET_prec$prec)
+
+DRY_mean <- mean(LCL_DAILY_DRY_prec$prec)
+WET_mean <- mean(LCL_DAILY_WET_prec$prec)
+DRY_med <- median(LCL_DAILY_DRY_prec$prec)
+WET_med <- median(LCL_DAILY_WET_prec$prec)
+
 
 plot(5.4,50, xlim = c(0,100),ylim = c(0,70),pch=3,col ="brown",
      xlab = "", ylab ="",lwd=2)
 par(new = TRUE) 
-plot(12.2,50, xlim = c(0,100),ylim = c(0,70),pch=3,col = "darkgreen",
+plot(10.3,50, xlim = c(0,100),ylim = c(0,70),pch=3,col = "darkgreen",
      xlab = "", ylab ="",lwd=2)
 par(new = TRUE) 
-plot(10.89,30, xlim = c(0,100),ylim = c(0,70),pch=4,col ="brown",
+plot(10.98,30, xlim = c(0,100),ylim = c(0,70),pch=4,col ="brown",
      xlab = "", ylab ="",lwd=2)
 par(new = TRUE) 
-plot(17.27,30, xlim = c(0,100),ylim = c(0,70),pch=4,col = "darkgreen",
+plot(16.69,30, xlim = c(0,100),ylim = c(0,70),pch=4,col = "darkgreen",
      xlab = "", ylab ="",lwd=2)
 
 text(9, 55, substitute(paste(bold('MEDIAN'))), col ="darkgrey")
 text(14, 35, substitute(paste(bold('MEAN'))), col ="darkgrey")
 
 
+
+# Perform independent two-sample t-test
+result <- t.test(LCL_DAILY_DRY_prec$prec_mm, LCL_DAILY_WET_prec$prec_mm)
+
+# Print the result
+print(result)
+
+
+#########WHERE DOES The difference come from
+
+
+Dry_comp <- LCL_DAILY_DRY %>% filter(prec_mm < 40)
+
+Wet_comp <- LCL_DAILY_WET %>% filter(prec_mm < 40 )
+
+
+diff_40 <- sum(Wet_comp$prec_mm) - sum(Dry_comp$prec_mm)
+
+#369.3 mm difference
+
+
+diff <- sum(LCL_DAILY_WET$prec_mm) - sum(LCL_DAILY_DRY$prec_mm)
+
+ratio <- diff_40/diff
+
+#50% of the difference is from less than 40
