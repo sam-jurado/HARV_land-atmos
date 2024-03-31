@@ -336,13 +336,12 @@ cluster_id <- df_anom_precip$cluster_id
 #'with more intuitive variables
 
 
+
 df_anom_precip <- df_anom_precip[, c("prec", "VSWC.diff","VSWC.mean.shift")]
 
 df_anom_precip <- na.omit(df_anom_precip)
 
 df_anom_precip$cluster_id <- as.numeric(cluster_id)
-
-plot(df_anom_precip$prec,df_anom_precip$VSWC.diff)
 
 
 

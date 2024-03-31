@@ -1391,6 +1391,63 @@ subtitle = "HARV, EMS, & NARR Dataset, June - September 2016-2023"
 mtext(subtitle)
 
 
+#ATMOSPHERIC COUPLING REGIME GRAPH
+
+#filter by IQR first
+
+quartiles_LCL <- quantile(LCL_clean$LCL, probs=c(.25, .75), na.rm = TRUE)
+IQR_LCL <- (quartiles_LCL[2] - quartiles_LCL[1])*1.5
+high <- IQR_LCL + quartiles_LCL[2]
+
+LCL_clean$LCL[LCL_clean$LCL > high] <- NA
+
+
+
+LCL_binned <- LCL_clean%>% mutate(swc_binned = cut(VSWCAnom.mean.med, breaks= 100))
+
+binned <- LCL_binned  %>% group_by(swc_binned) %>% summarise(LCL.avg = mean(LCL,na.rm=TRUE),
+                                                             LCL.med = median(LCL,na.rm=TRUE),
+                                                             LCL.sd = sd(LCL,na.rm=TRUE),
+                                                             hpbl.avg = mean(hpbl,na.rm=TRUE),
+                                                             hpbl.med = median(hpbl,na.rm =TRUE),
+                                                             hpbl.sd = sd(hpbl,na.rm=TRUE),
+                                                             swc_avg= mean(VSWCAnom.mean.med, na.rm=TRUE),
+                                                             swc_med = median(VSWCAnom.mean.med, na.rm=TRUE),
+                                                             freq = n())
+
+
+binned$LCL.std.err <- binned$LCL.sd/(sqrt(binned$freq))
+binned$hpbl.std.err <- binned$hpbl.sd/(sqrt(binned$freq))
+
+
+#filter by low 
+binned <- binned %>% filter(binned$freq > 10)
+
+#gg scatter plot
+
+
+ggplot(binned) +
+  geom_point(aes(x = swc_med, y = LCL.avg, size = freq),shape = 17, color = "cadetblue4") + 
+  scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
+  geom_smooth(method = "loess", fill = "cadetblue4", alpha = 0.2, col = "cadetblue4",aes(x = swc_med, y = LCL.avg,weight = freq), level = .9)+
+  labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
+       x = "X-axis", y = "Y-axis", size = "Count")+
+  geom_point(aes(x = swc_med, y = hpbl.avg, size = freq),shape = 16, color = "brown3") +
+  geom_smooth(method = "loess", fill = "brown3", col = "brown3",alpha = 0.2, aes(x = swc_med, y = hpbl.avg, weight = freq), level = .95)+
+  scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
+  labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
+       x = "Soil Moisture Anomaly", y = "Height [z]", size = "N",
+       subtitle = "HARV, EMS, & NARR Dataset, June - September 2017-2023")+
+  coord_cartesian(ylim = c(0, 1100)) +
+  theme(plot.title = element_text(face = "bold",hjust = 0.5),  # Center the title
+        plot.subtitle = element_text(hjust = 0.5),  # Remove major grid lines
+        panel.grid.minor = element_blank())   # Center the subtitle
+
+
+
+
+
+
 ####CROSSOVER EVENTS####
 
 setwd("/Users/jurado/")
