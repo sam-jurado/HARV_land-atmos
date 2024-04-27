@@ -98,7 +98,7 @@ serial = c("20221204T191813Z","20221204T215858Z","20221204T215317Z","20221204T21
 
 
 
-plot_num = c("5")
+plot_num = c("1")
 plot_depth = c("1")
 
 df_sm <- data.frame()
@@ -137,11 +137,12 @@ for (x in 1:length(folder_list)){
 df_sm <- df_sm %>% filter(VSWCFinalQF == 0 )
 
 
-df5 <- df_sm
+df1 <- df_sm
 
 
-df5$datetime <- as.POSIXct(df5$endDateTime, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC") 
-df5$datetime<- as.POSIXct(df5$datetime, format = "%Y-%m-%dT%H:%M:%S", tz = " 	EST") 
+
+df1$datetime <- as.POSIXct(df1$endDateTime, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC") 
+df1$datetime<- as.POSIXct(df1$datetime, format = "%Y-%m-%dT%H:%M:%S", tz = " 	EST") 
 
 #top 2 layers all useable across all sensors, top 1 layer more usable
 
@@ -282,6 +283,9 @@ df_anom_precip <- df_anom_precip[, c("prec", "VSWC.diff")]
 
 df_anom_precip <- na.omit(df_anom_precip)
 
+df_anom_precip <- df_anom_precip %>% filter(prec >= 1)
+
+
 df_anom_precip[, c("prec", "VSWC.diff")] = scale(df_anom_precip[, c("prec", "VSWC.diff")])
 
 # Get the two columns of interest
@@ -341,6 +345,8 @@ df_anom_precip <- df_anom_precip[, c("prec", "VSWC.diff","VSWC.mean.shift")]
 
 df_anom_precip <- na.omit(df_anom_precip)
 
+df_anom_precip <- df_anom_precip %>% filter(prec >= 1)
+
 df_anom_precip$cluster_id <- as.numeric(cluster_id)
 
 
@@ -351,7 +357,7 @@ plot(df_anom_precip$prec,df_anom_precip$VSWC.diff,
      col = alpha(ifelse(df_anom_precip$VSWC.mean.shift >0,"deepskyblue3","lightsalmon4"), 0.7),
      pch = df_anom_precip$cluster_id,
      lwd =1.5,
-     xlab = "Precipitation",
+     xlab = "Precipitation [mm]",
      ylab = "Soil Moisture Anomaly Difference",
      ylim = c(-.1,.1)
      )
@@ -361,26 +367,63 @@ abline(v=14.6,lty =3, col ="darkgrey",lwd =1.5)
 abline(v=25.5,lty =3, col ="darkgrey",lwd =1.5)
 legend(60,-.05,legend=c("Cluster 1","Cluster 2","Cluster 3","Cluster 4"),
        col= "darkgrey",
-       pch=c(4,2,3,1), ncol=1,cex=1, bty = "n", pt.lwd = 1.5)
+       pch=c(2,4,1,3), ncol=1,cex=1, bty = "n", pt.lwd = 1.5)
 legend(80,-.06,legend=c("Wetter","Drier"),
        col= c("deepskyblue3","lightsalmon4"),
        pch=c(15,15), ncol=1,cex=1, bty = "n", pt.lwd = 1.5)
 title("Soil Moisture Response to Rain Events")
-subtitle = "HARV 2017-2023"
+subtitle = "HARV June - September of 2017-2023"
 mtext(subtitle)
 par(new = TRUE)
 plot(df_anom_precip$prec,df_anom_precip$VSWC.diff,
      col = alpha(ifelse(df_anom_precip$VSWC.mean.shift >0,"deepskyblue3","lightsalmon4"), 0.7),
      pch = df_anom_precip$cluster_id,
      lwd =1.5,
-     xlab = "Precipitation",
+     xlab = "",
      ylab = "Soil Moisture Anomaly Difference",
      ylim = c(-.1,.1)
 )
-text(-.5, .1, substitute(paste('25%')), col ="darkgrey")
+text(0, .1, substitute(paste('25%')), col ="darkgrey")
 text(8.5, .1, substitute(paste('75%')), col ="darkgrey")
 text(20, .1, substitute(paste('90%')), col ="darkgrey")
 text(60, .1, substitute(paste('Top 10% of Storms')), col ="darkgrey")
+
+####CLUSTER COMPARISON###
+
+
+# Perform independent t-test
+
+#wetter, wettest first
+cluster3 <- df_anom_precip %>% filter(cluster_id == 3)
+cluster3 <- cluster3$prec
+cluster1 <- df_anom_precip %>% filter(cluster_id == 1)
+cluster1 <- cluster1$prec
+
+#dryer, driest first
+cluster2 <- df_anom_precip %>% filter(cluster_id == 2)
+cluster2 <- cluster2$prec
+cluster4 <- df_anom_precip %>% filter(cluster_id == 4)
+cluster4 <- cluster4$prec
+  
+result <- t.test(cluster4, cluster2)
+
+# Print the result
+print(result)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #what are the percentiles of rainfall by daily event?
