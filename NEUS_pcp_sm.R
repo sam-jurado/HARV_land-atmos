@@ -224,7 +224,7 @@ df_prcp["prec_mm"][df_prcp["prec_mm"] == 0] <- NA
 #df_prcp["prec_mm"][df_prcp["prec_mm"] > 20] <- NA
 
 #Which months are we looking at
-df_prcp["prec_mm"][df_prcp["month"] <5 | df_prcp["month"] >9] <- NA
+#df_prcp["prec_mm"][df_prcp["month"] <5 | df_prcp["month"] >9] <- NA
 
 #for loop to get and store the top 1% per year.
 
@@ -264,7 +264,7 @@ for(x in 1964:2023){
   
   #df_prcp["prec_mm"][df_prcp["prec_mm"] > 20] <- NA
   
-  df_prcp["prec_mm"][df_prcp["month"] >5 & df_prcp["month"] <9] <- NA
+  #df_prcp["prec_mm"][df_prcp["month"] >5 & df_prcp["month"] <9] <- NA
   
   start_date <- as.Date("1964-01-01")  # Start date
   end_date <- as.Date("2023-12-31")    # End date
@@ -375,7 +375,7 @@ lines(predict(lm(df_perc_hvy$frac~df_perc_hvy$Year)),col='black')
 
 df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
 df_prcp["prec_mm"][df_prcp["prec_mm"] == 0] <- NA
-df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
+#df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
 df_prcp$date <- as.Date(df_prcp$date, "%m/%d/%Y")
 df_prcp$date <- update(df_prcp$date, year = df_prcp$year)
 
@@ -445,7 +445,7 @@ df_prcp$date <- update(df_prcp$date, year = df_prcp$year)
 perc_hvy <- c()
 sum_hvy <- c()
 
-df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
+#df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
 q <- quantile(df_prcp$prec_mm, prob=c(.90), type=1, na.rm =TRUE)
 
 x=1964
@@ -454,7 +454,7 @@ for(x in 1964:2023){
   x <- toString(x)
   print(x)
   df_prcp <- df_prcp[df_prcp$date >= as.Date(paste(x,"01-01", sep ="-")) & df_prcp$date <= as.Date(paste(x,"12-31",sep = "-")), ]
-  df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
+  #df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
   prcp_sum <- sum(df_prcp$prec_mm, na.rm = TRUE)
   df_prcp <- df_prcp %>% filter( prec_mm >= q)
   prcp_H_sum <- sum(df_prcp$prec_mm, na.rm = TRUE)
@@ -477,15 +477,36 @@ df_perc_hvy <- data.frame(perc_hvy)
 df_perc_hvy$Year <- seq(1964,2023,1)
 df_perc_hvy$Tot <- sum_hvy
 
-plot(df_perc_hvy$Year,df_perc_hvy$perc_hvy,type="b", xlab = "Year", ylab = "Rain Contributed by Heavy Storms [%]", lwd =2)
-abline(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year), lty = 2, lwd = 2)
-title(expression(paste(bold("Yearly Precip. Contributions of Heavy Rainfall "))))
-subtitle = "EMS, May - September, 1964 - 2023"
+plot(df_perc_hvy$Year,df_perc_hvy$perc_hvy,type="l", xlab = "Year", ylab = "Precip. Contributed by Heavy Storms [%]", lwd =2,
+     ylim = c(18,100), pch = 16)
+abline(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year), lty = 1, lwd = 1,col = alpha("black",.6 ))
+title(expression(paste(bold("Yearly Contributions of Heavy Precipitation "))))
+subtitle = "EMS, 1964 - 2023"
 mtext(subtitle)
-
+par(new = TRUE) 
+plot(df_perc_hvy$Year,df_perc_hvy$Tot,type="b", lwd =2
+    , pch = 15, ylim =c(0,1100), ylab = "", xlab = "", axes = FALSE, col = alpha("cadetblue4",.8))
+# Add y-axis label for y2
+axis(side = 4)
+mtext("Precip. Contributed by Heavy Storms [mm]", side = 4, line = 3)
+abline(lm(df_perc_hvy$Tot ~ df_perc_hvy$Year), lty = 2, lwd = 1,col = alpha("cadetblue4",.8))
+par(mar = c(5, 4, 4, 5) + 0.05)
+legend(1965,1100,legend=c("Percent","Total"), lty=c(1,1),lwd =c(2,2),
+       col= c("black",alpha("cadetblue4",.8)), bty="n")
+       
 summary(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year))
 Kendall(df_perc_hvy$Year,df_perc_hvy$perc_hvy)
 
+summary(lm(df_perc_hvy$Tot ~ df_perc_hvy$Year))
+Kendall(df_perc_hvy$Year,df_perc_hvy$Tot)
+
+
+
+
+
+
+mean(df_perc_hvy$perc_hvy[51:60])
+mean(df_perc_hvy$perc_hvy[1:10])
 
 
 
