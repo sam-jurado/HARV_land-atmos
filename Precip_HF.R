@@ -226,7 +226,8 @@ ggbarplot(
   ggtitle(label= "Available Water Column by Spring Moisture Regime", subtitle ="Fisher Station 1964 - 2023")+
   theme(plot.margin = margin(1,1,3,1, "cm"))+
   theme(plot.title = element_text(hjust = 0.5,face = "bold"),
-        plot.subtitle= element_text(hjust = .5),)
+        plot.subtitle= element_text(hjust = .5),)+
+  geom_hline(yintercept = 0, linetype = "dashed", color = "darkgrey")  # Add horizontal line at y = 0
 
 data1 <- subset(df_spring, regime == "Dry" )
 data2 <- subset(df_spring, regime == "Wet" )
@@ -290,7 +291,13 @@ ggbarplot(
   ggtitle(label= "Available Water Column by Spring Moisture Regime", subtitle ="Fisher Station 1964 - 2023")+
   theme(plot.margin = margin(1,1,3,1, "cm"))+
   theme(plot.title = element_text(hjust = 0.5,face = "bold"),
-        plot.subtitle= element_text(hjust = .5),)
+        plot.subtitle= element_text(hjust = .5),)+
+  geom_hline(yintercept = 0, linetype = "dashed", color = "darkgrey")  # Add horizontal line at y = 0
+
+
+mean <- df_spring_deficit %>% filter(regime == "Wet")
+mean(mean$summer_AW)
+
 
 df_spring_surplus <- df_spring_surplus[order(df_spring_surplus$summer_AW),]
 
@@ -307,7 +314,9 @@ ggbarplot(
   ggtitle(label= "Available Water Column by Spring Moisture Regime", subtitle ="Fisher Station 1964 - 2023")+
   theme(plot.margin = margin(1,1,3,1, "cm"))+
   theme(plot.title = element_text(hjust = 0.5,face = "bold"),
-        plot.subtitle= element_text(hjust = .5),)
+        plot.subtitle= element_text(hjust = .5),)+
+  geom_hline(yintercept = 0, linetype = "dashed", color = "darkgrey")  # Add horizontal line at y = 0
+
 par(mar = c(8, 4.7, 4.1, 2.1), new= TRUE)
 plot(1.5,337-128,xlim = c(0,5),ylim = c(0,250), xlab = "",
      ylab ="",
@@ -331,7 +340,18 @@ plot(4.2,315-128,xlim = c(0,5),ylim = c(0,250), xlab = "",
      pch =4)
 par(mar = c(8, 4.7, 4.1, 2.1), new= TRUE)
 
+mean <- df_spring_surplus %>% filter(regime == "Dry")
+mean(mean$summer_AW, na.rm=TRUE)
+
+
+
 ####Deficit wet -58.8, surplus dry 240.8, 337.6
+
+
+
+
+
+
 
 
 #######FINAL SUPER GRAPH#####################

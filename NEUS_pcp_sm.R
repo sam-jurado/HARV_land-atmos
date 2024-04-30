@@ -505,8 +505,9 @@ Kendall(df_perc_hvy$Year,df_perc_hvy$Tot)
 
 
 
-mean(df_perc_hvy$perc_hvy[51:60])
-mean(df_perc_hvy$perc_hvy[1:10])
+
+mean(df_perc_hvy$Tot[51:60])
+mean(df_perc_hvy$Tot[1:10])
 
 
 
