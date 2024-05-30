@@ -1360,8 +1360,10 @@ t.test(LCL_DRY$LE,LCL_WET$LE)
 LCL_binned <- LCL_clean%>% mutate(swc_binned = cut(VSWCAnom.mean.med, breaks= 15))
 
 binned <- LCL_binned  %>% group_by(swc_binned) %>% summarise(LCL.avg = mean(LCL,na.rm=TRUE),
+                                                             LCL.max = max(LCL,na.rm=TRUE),
                                                              LCL.sd = sd(LCL,na.rm=TRUE),
                                                              hpbl.avg = mean(hpbl,na.rm=TRUE),
+                                                             hpbl.max = max(hpbl,na.rm=TRUE),
                                                              hpbl.sd = sd(hpbl,na.rm=TRUE),
                                                              swc_avg= mean(VSWCAnom.mean.med, na.rm=TRUE),
                                                              freq = n())
@@ -1373,11 +1375,11 @@ binned$hpbl.std.err <- binned$hpbl.sd/(sqrt(binned$freq))
 
 #This plot needs error bars
 
-plot(binned$swc_avg,binned$LCL.avg, type = "b", pch =2, col = "cadetblue", lwd=2 ,
-     ylim = c(0,1100),
+plot(binned$swc_avg,binned$LCL.max, type = "b", pch =2, col = "cadetblue", lwd=2 ,
+     ylim = c(0,3000),
      xlab = "Soil Moisture Anomaly",
      ylab = "Height [m]")
-lines(binned$swc_avg,binned$hpbl.avg, type ="b",lwd =2, col = "brown3")
+lines(binned$swc_avg,binned$hpbl.max, type ="b",lwd =2, col = "brown3")
 arrows(binned$swc_avg,y0 = binned$hpbl.avg - binned$hpbl.std.err, binned$swc_avg, y1=binned$hpbl.avg  + binned$hpbl.std.err,
        code=3, angle=90, length=0.05, lwd = 1.5, col="darkgrey")
 arrows(binned$swc_avg,y0 = binned$LCL.avg - binned$LCL.std.err, binned$swc_avg, y1=binned$LCL.avg  + binned$LCL.std.err,
@@ -1402,17 +1404,33 @@ high <- IQR_LCL + quartiles_LCL[2]
 LCL_clean$LCL[LCL_clean$LCL > high] <- NA
 
 
+######Take the max LCL and max ABL and the soil moisture of eachand plot it per day###
 
-LCL_binned <- LCL_clean%>% mutate(swc_binned = cut(VSWCAnom.mean.med, breaks= 100))
 
-binned <- LCL_binned  %>% group_by(swc_binned) %>% summarise(LCL.avg = mean(LCL,na.rm=TRUE),
-                                                             LCL.med = median(LCL,na.rm=TRUE),
-                                                             LCL.sd = sd(LCL,na.rm=TRUE),
-                                                             hpbl.avg = mean(hpbl,na.rm=TRUE),
-                                                             hpbl.med = median(hpbl,na.rm =TRUE),
-                                                             hpbl.sd = sd(hpbl,na.rm=TRUE),
-                                                             swc_avg= mean(VSWCAnom.mean.med, na.rm=TRUE),
-                                                             swc_med = median(VSWCAnom.mean.med, na.rm=TRUE),
+LCL_clean_Daily <- LCL_clean %>% group_by(date) %>% summarise(LCL.max = max(LCL,na.rm=TRUE),
+                                                              hpbl.max = max(hpbl,na.rm=TRUE),
+                                                              soil_moisture = mean(VSWCAnom.mean.med, na.rm=TRUE))
+
+
+
+
+
+
+
+
+
+LCL_binned <- LCL_clean_Daily%>% mutate(swc_binned = cut( soil_moisture, breaks= 100))
+
+binned <- LCL_binned  %>% group_by(swc_binned) %>% summarise(LCL.avg = mean(LCL.max,na.rm=TRUE),
+                                                            
+                                                             LCL.med = median(LCL.max,na.rm=TRUE),
+                                                             LCL.sd = sd(LCL.max,na.rm=TRUE),
+                                                             hpbl.avg = mean(hpbl.max,na.rm=TRUE),
+                                                             hpbl.med = median(hpbl.max,na.rm =TRUE),
+                                                             
+                                                             hpbl.sd = sd(hpbl.max,na.rm=TRUE),
+                                                             swc_avg= mean(soil_moisture, na.rm=TRUE),
+                                                             swc_med = median(soil_moisture, na.rm=TRUE),
                                                              freq = n())
 
 
@@ -1421,7 +1439,7 @@ binned$hpbl.std.err <- binned$hpbl.sd/(sqrt(binned$freq))
 
 
 #filter by low 
-binned <- binned %>% filter(binned$freq > 10)
+binned <- binned %>% filter(binned$freq > 1)
 
 #gg scatter plot
 
@@ -1436,9 +1454,9 @@ ggplot(binned) +
   geom_smooth(method = "loess", fill = "brown3", col = "brown3",alpha = 0.2, aes(x = swc_med, y = hpbl.avg, weight = freq), level = .95)+
   scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
   labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
-       x = "Soil Moisture Anomaly", y = "Height [z]", size = "N",
+       x = "Soil Moisture Anomaly", y = "24hr Maximum Height [z]", size = "N",
        subtitle = "HARV, EMS, & NARR Dataset, June - September 2017-2023")+
-  coord_cartesian(ylim = c(0, 1100)) +
+  coord_cartesian(ylim = c(0, 2000)) +
   theme(plot.title = element_text(face = "bold",hjust = 0.5),  # Center the title
         plot.subtitle = element_text(hjust = 0.5),  # Remove major grid lines
         panel.grid.minor = element_blank())   # Center the subtitle
@@ -1550,12 +1568,87 @@ text(9, 55, substitute(paste(bold('MEDIAN'))), col ="darkgrey")
 text(14, 35, substitute(paste(bold('MEAN'))), col ="darkgrey")
 
 
-
 # Perform independent two-sample t-test
 result <- t.test(LCL_DAILY_DRY_prec$prec_mm, LCL_DAILY_WET_prec$prec_mm)
 
 # Print the result
 print(result)
+
+
+
+###########FINAL IMPROVED HISTOGRAM PLOT##############
+
+# Install and load the ggplot2 package
+install.packages("ggplot2")
+library(ggplot2)
+
+# Sample data
+data_set1 <- LCL_DAILY_DRY_prec$prec_mm  # Generate 100 random numbers from a normal distribution with mean 10 and standard deviation 2
+data_set2 <- LCL_DAILY_WET_prec$prec_mm  # Generate 100 random numbers from a normal distribution with mean 15 and standard deviation 3
+
+
+# Sample vectors
+
+
+# Determine the length of the vectors
+len1 <- length(data_set1)
+len2 <- length(data_set2)
+
+# If the vectors are of different lengths, you can pad the shorter vector with NA values
+if (len1 < len2) {
+  data_set1<- c(data_set1, rep(NA, len2 - len1))
+} else if (len1 > len2) {
+  data_set2 <- c(data_set2, rep(NA, len1 - len2))
+}
+
+# Create a data frame
+df <- data.frame(Vector1 = data_set1, Vector2 = data_set2)
+
+# Print the data frame
+print(df)
+
+
+
+# Combine the data sets into a single data frame
+df <- data.frame(value = c(df$Vector1, df$Vector2),
+                 dataset = factor(rep(c("Dry", "Wet"), each = 99)))
+
+# Create the histogram
+ggplot(df, aes(x = value, fill = dataset)) +
+  geom_histogram(position = "dodge", bins = 20, color = "black", alpha = 0.7) +
+  labs(subtitle = "HARV & EMS June-September 2017-2023") + 
+  labs(title = "Precipitation Density Histogram",
+       x = "Precipitation [mm]",
+       y = "Density",
+       fill = "Regime") +
+  scale_fill_manual(values = c("brown", "darkgreen")) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"), # Center and bold the title
+    plot.subtitle = element_text(hjust = 0.5) # Center the subtitle
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #########WHERE DOES The difference come from

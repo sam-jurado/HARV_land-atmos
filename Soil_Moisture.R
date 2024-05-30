@@ -98,7 +98,7 @@ serial = c("20221204T191813Z","20221204T215858Z","20221204T215317Z","20221204T21
 
 
 
-plot_num = c("1")
+plot_num = c("5")
 plot_depth = c("1")
 
 df_sm <- data.frame()
@@ -137,12 +137,12 @@ for (x in 1:length(folder_list)){
 df_sm <- df_sm %>% filter(VSWCFinalQF == 0 )
 
 
-df1 <- df_sm
+df5 <- df_sm
 
 
 
-df1$datetime <- as.POSIXct(df1$endDateTime, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC") 
-df1$datetime<- as.POSIXct(df1$datetime, format = "%Y-%m-%dT%H:%M:%S", tz = " 	EST") 
+df5$datetime <- as.POSIXct(df5$endDateTime, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC") 
+df5$datetime<- as.POSIXct(df5$datetime, format = "%Y-%m-%dT%H:%M:%S", tz = " 	EST") 
 
 #top 2 layers all useable across all sensors, top 1 layer more usable
 
@@ -389,6 +389,54 @@ text(20, .1, substitute(paste('90%')), col ="darkgrey")
 text(60, .1, substitute(paste('Top 10% of Storms')), col ="darkgrey")
 
 ####CLUSTER COMPARISON###
+
+#ANOVA#
+data <- data.frame(
+  Group = factor(c("A", "A", "B", "B", "C", "C")),
+  Score = c(5, 6, 7, 8, 9, 10)
+)
+
+
+
+
+#Soil Moisture
+
+df_anom_precip$cluster_id<-as.character(df_anom_precip$cluster_id)
+
+anova_model <- aov(VSWC.diff ~ cluster_id, data = df_anom_precip)
+
+summary(anova_model)
+
+posthoc_results <- TukeyHSD(anova_model)
+print(posthoc_results)
+
+
+plot(anova_model, 2)   # Q-Q plot
+
+
+#Precip
+
+anova_model <- aov(prec ~ cluster_id, data = df_anom_precip)
+
+summary(anova_model)
+#Yet, the precip means between all groups is, p = .00218
+
+posthoc_results <- TukeyHSD(anova_model)
+print(posthoc_results)
+
+
+plot(anova_model, 2) 
+
+
+
+
+
+
+
+
+
+
+
 
 
 # Perform independent t-test
