@@ -96,7 +96,10 @@ EMS <- EMS%>% filter(EMS$year >2016)
 EMS$date <- paste(as.character(EMS$year),as.character(EMS$month), sep = "-0")
 EMS$date <- paste(as.character(EMS$date),as.character(EMS$day), sep = "-")
 
+
+#for conversion,
 EMS$ET_mm <- EMS$LE_f*(1*10**-6)*(1/2.26)*1000*(1/10000)*3600*10
+
 
 
 #making time stamps
@@ -134,21 +137,22 @@ ET_PRECIP_COL <- merge(ET_PRECIP,df_EVAP, by ="date", all=TRUE)
 
 ET_PRECIP_COL$`Precipitable_Water(cm)` <- as.numeric(ET_PRECIP_COL$`Precipitable_Water(cm)`)
 
-mean((ET_PRECIP_COL$ET_sum)/(ET_PRECIP_COL$`Precipitable_Water(cm)`*10), na.rm=TRUE)
+mean((ET_PRECIP_COL$ET_sum)/(ET_PRECIP_COL$`Precipitable_Water(cm)`), na.rm=TRUE)
 
 #on average, land gives 17% of water to column, the rest is advected.
 
 
 #merge with soil moisture, must use df_anom_daily from Soil_Moisture.R
 
+
 ET_PRECIP_COL_SM <- merge(ET_PRECIP_COL,df_anom_daily, by = "date", all=TRUE)
-ET_PRECIP_COL_SM$perc_evap <- ET_PRECIP_COL_SM$ET_sum/ET_PRECIP_COL_SM$`Precipitable_Water(cm)`
+ET_PRECIP_COL_SM$perc_evap <- ET_PRECIP_COL_SM$ET_sum/ET_PRECIP_COL_SM$`Precipitable_Water(cm)`*10
 ET_PRECIP_COL_SM <- data.frame(date = ET_PRECIP_COL_SM$date,
                                ET = ET_PRECIP_COL_SM$ET_sum,
-                               Precip_col = ET_PRECIP_COL_SM$`Precipitable_Water(cm)`,
+                               Precip_col = ET_PRECIP_COL_SM$`Precipitable_Water(cm)`*10,
                                VSWC.mean = ET_PRECIP_COL_SM$VSWC.mean,
                                VPD = ET_PRECIP_COL_SM$VPD)
-ET_PRECIP_COL_SM$perc_evap <- (ET_PRECIP_COL_SM$ET)/(ET_PRECIP_COL_SM$Precip_col*10)
+ET_PRECIP_COL_SM$perc_evap <- (ET_PRECIP_COL_SM$ET)/(ET_PRECIP_COL_SM$Precip_col)*100
 
 
 
@@ -216,24 +220,34 @@ plot(ET_PRECIP_COL_SM$VSWC.mean,ET_PRECIP_COL_SM$perc_evap,col = alpha(ET_PRECIP
      pch = ET_PRECIP_COL_SM$pch,
      xlab = "Soil Moisture Anomaly",
      ylab = "% Water from ET",
-     ylim = c(0,.7))
+     ylim = c(0,70))
 
 abline(reg_high, lwd =2, col = "red")
 abline(reg_avg, lwd =2, col = "purple")
 abline(reg_low, lwd =2, col ="blue")
-text(.08, .47, substitute(paste('75% VPD ')), col ="red")
-text(.1, .30, substitute(paste('IQR VPD ')), col ="purple")
-text(.12, .18, substitute(paste('25% VPD ')), col ="blue")
+text(.08, 47, substitute(paste('75% VPD ')), col ="red")
+text(.1, 30, substitute(paste('IQR VPD ')), col ="purple")
+text(.12, 18, substitute(paste('25% VPD ')), col ="blue")
 title("Precipitable Water from Evapotranspiration")
 subtitle = "HARV, EMS June-September 2017-2023"
 mtext(subtitle)
 legend()
 
-
 mean(VPD_Low$perc_evap, na.rm=TRUE)
 mean(VPD_High$perc_evap, na.rm=TRUE)
 
 summary(mean)
+
+library(Kendall)
+Kendall(VPD_High$VSWC.mean, VPD_High$perc_evap)
+summary(reg_high)
+Kendall(VPD_Avg$VSWC.mean, VPD_Avg$perc_evap)
+summary(reg_avg)
+Kendall(VPD_Low$VSWC.mean, VPD_Low$perc_evap)
+summary(reg_low)
+
+
+mean(ET_PRECIP_COL_SM$perc_evap, na.rm=TRUE)
 
 
 #'Add 3 lines, a line that shows increase with dry air conditions, average air conditions,

@@ -340,11 +340,24 @@ plot(4.2,315-128,xlim = c(0,5),ylim = c(0,250), xlab = "",
      pch =4)
 par(mar = c(8, 4.7, 4.1, 2.1), new= TRUE)
 
-mean <- df_spring_surplus %>% filter(regime == "Dry")
-mean(mean$summer_AW, na.rm=TRUE)
+
+sd <- df_spring_deficit %>% filter(regime == "Wet")
+sd(sd$summer_AW, na.rm=TRUE)
+
+
+surplus_wet <- df_spring_surplus %>% filter(regime == "Wet")
+surplus_dry <- df_spring_surplus %>% filter(regime == "Dry")
+
+deficit_wet <- df_spring_deficit %>% filter(regime == "Wet")
+deficit_dry <- df_spring_deficit %>% filter(regime == "Dry")
 
 
 
+surplus_ttest <- t.test(surplus_wet$summer_AW, surplus_dry$summer_AW)
+print(surplus_ttest)
+
+deficit_ttest <- t.test(deficit_wet$summer_AW, deficit_dry$summer_AW)
+print(deficit_ttest)
 ####Deficit wet -58.8, surplus dry 240.8, 337.6
 
 

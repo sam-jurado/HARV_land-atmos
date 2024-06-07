@@ -443,13 +443,13 @@ plot(anova_model, 2)
 
 #wetter, wettest first
 cluster3 <- df_anom_precip %>% filter(cluster_id == 3)
-cluster3 <- cluster3$prec
+cluster3 <- cluster3$VSWC.diff
 cluster1 <- df_anom_precip %>% filter(cluster_id == 1)
-cluster1 <- cluster1$prec
+cluster1 <- cluster1$VSWC.diff
 
 #dryer, driest first
 cluster2 <- df_anom_precip %>% filter(cluster_id == 2)
-cluster2 <- cluster2$prec
+cluster2 <- cluster2$VSWC.diff
 cluster4 <- df_anom_precip %>% filter(cluster_id == 4)
 cluster4 <- cluster4$prec
   
@@ -458,7 +458,10 @@ result <- t.test(cluster4, cluster2)
 # Print the result
 print(result)
 
-
+median(cluster3)
+median(cluster1)
+median(cluster4)
+median(cluster2)
 
 
 

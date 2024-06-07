@@ -1139,6 +1139,9 @@ LE <- hfall_9223$FH2O_e.3mol.m2.s  # Example temperature data corresponding to t
 # Interpolate data to even 30-minute intervals
 interpolated_LE <- approx(timestamps, LE, xout = interpolated_timestamps,na.rm = TRUE)$y
 
+RNET <- hfall_9223$RNET_W.m2
+# Interpolate data to even 30-minute intervals
+interpolated_RNET <- approx(timestamps, RNET, xout = interpolated_timestamps,na.rm = TRUE)$y
 
 
 hfall_9223_clean <- data.frame("datetime" =interpolated_timestamps, 
@@ -1146,7 +1149,8 @@ hfall_9223_clean <- data.frame("datetime" =interpolated_timestamps,
                                "temp"=interpolated_temp,
                                "P"=interpolated_P,
                                "H" =interpolated_H ,
-                               "LE"= interpolated_LE)
+                               "LE"= interpolated_LE,
+                               "RNET" = interpolated_RNET)
 
 data_raw = nrow(hfall_9223_clean)
 
@@ -1191,7 +1195,7 @@ LCL$hour <- hour(LCL$datetime)
 
 
 #still need LCL
-LCL_clean <- LCL[,c("datetime","VSWCAnom.mean.med","RH","hpbl","hour","P","temp","H","LE")]
+LCL_clean <- LCL[,c("datetime","VSWCAnom.mean.med","RH","hpbl","hour","P","temp","H","LE","RNET")]
 
 
 
@@ -1214,13 +1218,23 @@ LCLDIURNAL <- LCL_clean %>% group_by(hour) %>% summarise(LCL.avg = mean(LCL,na.r
 
 
 
-quartiles <- quantile(LCL_clean$VSWCAnom.mean.med, probs=c(.25, .75), na.rm = TRUE)
+quartiles <- quantile(LCL_clean$VSWCAnom.mean.med, probs=c(.25, .90), na.rm = TRUE)
 mean(LCL_clean$VSWCAnom.mean.med, na.rm= TRUE)
 
 LCL_DRY <- LCL_clean %>% filter(VSWCAnom.mean.med < -.001981223)
 
 
 LCL_WET <- LCL_clean %>% filter(VSWCAnom.mean.med > -.001981223)
+
+
+
+plot(LCL_clean$H,LCL_clean$LCL)
+abline(lm(LCL_clean$LCL~LCL_clean$H))
+Kendall(LCL_clean$H,LCL_clean$LCL)
+summary(lm(LCL_clean$H~LCL_clean$LCL))
+
+
+
 
 LCLDIURNAL_DRY <- LCL_DRY %>% group_by(hour) %>% summarise(LCL.avg = mean(LCL,na.rm=TRUE),
                                                            LCL.sd = sd(LCL,na.rm=TRUE),
@@ -1290,6 +1304,7 @@ mtext(subtitle)
 
 
 
+
 ########SHADED VERSION######
 
 #this needs error bars
@@ -1312,6 +1327,7 @@ polygon(x_polygon2, y_polygon2, col = alpha("darkgreen", 0.3), border = NA)
 x_polygon3 <- c(LCLDIURNAL_DRY$hour, rev(LCLDIURNAL_DRY$hour))
 y_polygon3 <- c(LCLDIURNAL_DRY$hpbl.avg + LCLDIURNAL_DRY$hpbl.err, rev(LCLDIURNAL_DRY$hpbl.avg - LCLDIURNAL_DRY$hpbl.err))
 polygon(x_polygon3, y_polygon3, col = alpha("brown", 0.3), border = NA)
+
 
 x_polygon4 <- c(LCLDIURNAL_WET$hour, rev(LCLDIURNAL_WET$hour))
 y_polygon4 <- c(LCLDIURNAL_WET$hpbl.avg + LCLDIURNAL_WET$hpbl.err, rev(LCLDIURNAL_WET$hpbl.avg - LCLDIURNAL_WET$hpbl.err))
@@ -1407,30 +1423,48 @@ LCL_clean$LCL[LCL_clean$LCL > high] <- NA
 ######Take the max LCL and max ABL and the soil moisture of eachand plot it per day###
 
 
-LCL_clean_Daily <- LCL_clean %>% group_by(date) %>% summarise(LCL.max = max(LCL,na.rm=TRUE),
-                                                              hpbl.max = max(hpbl,na.rm=TRUE),
-                                                              soil_moisture = mean(VSWCAnom.mean.med, na.rm=TRUE))
+LCL_clean$date <- date(LCL_clean$datetime)
+
+LCL_clean_Daily <- LCL_clean %>% group_by(date) %>% summarise(LCL.avg = mean(LCL,na.rm=TRUE),
+                                                              hpbl.avg= mean(hpbl,na.rm=TRUE),
+                                                              VSWCAnom.mean.med = mean(VSWCAnom.mean.med, na.rm=TRUE),
+                                                              H.avg = mean(H, na.rm=TRUE),
+                                                              LE.avg_moisture = mean(LE, na.rm=TRUE),
+                                                              temp= mean(temp, na.rm=TRUE),
+                                                              RH = mean(RH, na.rm=TRUE),
+                                                              RNET = max(RNET, na.rm=TRUE),)
+
+
+
+LCL_binned <- LCL_clean_Daily%>% mutate(swc_binned_rnet = cut( VSWCAnom.mean.med, breaks= 30))
+
+binned_daily <- LCL_binned  %>% group_by(swc_binned_rnet) %>% summarise(RNET = mean(RNET, na.rm=TRUE),
+                                                                   swc_med = median(VSWCAnom.mean.med, na.rm=TRUE),
+                                                                   freq = n())
+
+plot(binned_daily$swc_med,binned_daily$RNET)
 
 
 
 
 
+LCL_binned <- LCL_clean%>% mutate(swc_binned = cut( VSWCAnom.mean.med, breaks= 100))
 
-
-
-
-LCL_binned <- LCL_clean_Daily%>% mutate(swc_binned = cut( soil_moisture, breaks= 100))
-
-binned <- LCL_binned  %>% group_by(swc_binned) %>% summarise(LCL.avg = mean(LCL.max,na.rm=TRUE),
+binned <- LCL_binned  %>% group_by(swc_binned) %>% summarise(LCL.avg = mean(LCL,na.rm=TRUE),
                                                             
-                                                             LCL.med = median(LCL.max,na.rm=TRUE),
-                                                             LCL.sd = sd(LCL.max,na.rm=TRUE),
-                                                             hpbl.avg = mean(hpbl.max,na.rm=TRUE),
-                                                             hpbl.med = median(hpbl.max,na.rm =TRUE),
+                                                             LCL.med = median(LCL,na.rm=TRUE),
+                                                             LCL.sd = sd(LCL,na.rm=TRUE),
+                                                             hpbl.avg = mean(hpbl,na.rm=TRUE),
+                                                             hpbl.med = median(hpbl,na.rm =TRUE),
+                                                             temp.avg = mean(temp,na.rm=TRUE),
+                                                             LE.avg = mean(LE,na.rm=TRUE),
+                                                             H.avg = mean(H,na.rm=TRUE),
+                                                             RH.avg = mean(RH,na.rm=TRUE),
+                                                             RNET.avg = max(RNET,na.rm=TRUE),
                                                              
-                                                             hpbl.sd = sd(hpbl.max,na.rm=TRUE),
-                                                             swc_avg= mean(soil_moisture, na.rm=TRUE),
-                                                             swc_med = median(soil_moisture, na.rm=TRUE),
+                                                             hpbl.sd = sd(hpbl,na.rm=TRUE),
+                                                             swc_avg= mean(VSWCAnom.mean.med, na.rm=TRUE),
+                                                             swc_med = median(VSWCAnom.mean.med, na.rm=TRUE),
                                                              freq = n())
 
 
@@ -1439,9 +1473,10 @@ binned$hpbl.std.err <- binned$hpbl.sd/(sqrt(binned$freq))
 
 
 #filter by low 
-binned <- binned %>% filter(binned$freq > 1)
+binned <- binned %>% filter(binned$freq > 10)
 
 #gg scatter plot
+
 
 
 ggplot(binned) +
@@ -1454,9 +1489,33 @@ ggplot(binned) +
   geom_smooth(method = "loess", fill = "brown3", col = "brown3",alpha = 0.2, aes(x = swc_med, y = hpbl.avg, weight = freq), level = .95)+
   scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
   labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
+       x = "Soil Moisture Anomaly", y = "24hr Maximum Height [z], Net Radiation [W/m2]", size = "N",
+       subtitle = "HARV, EMS, & NARR Dataset, June - September 2017-2023")+
+  geom_point(aes(x = swc_med, y = RNET.avg, size = freq),shape = 18, color = "black") +
+  geom_smooth(method = "loess", fill = "black", col = "black",alpha = 0.2, aes(x = swc_med, y = RNET.avg, weight = freq), level = .95)+
+  scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
+  labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
+       x = "Soil Moisture Anomaly", y = "Height [z], Binned Maximum Net Radiation [W/m2]", size = "N",
+       subtitle = "HARV, EMS, & NARR Dataset, June - September 2017-2023")+
+  coord_cartesian(ylim = c(0, 1000)) +
+  theme(plot.title = element_text(face = "bold",hjust = 0.5),  # Center the title
+        plot.subtitle = element_text(hjust = 0.5),  # Remove major grid lines
+        panel.grid.minor = element_blank())   # Center the subtitle
+
+
+ggplot(binned) +
+  geom_point(aes(x = swc_med, y = RNET.avg, size = freq),shape = 17, color = "cadetblue4") + 
+  scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
+  geom_smooth(method = "loess", fill = "cadetblue4", alpha = 0.2, col = "cadetblue4",aes(x = swc_med, y = RNET.avg,weight = freq), level = .9)+
+  labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
+       x = "X-axis", y = "Y-axis", size = "Count")+
+  geom_point(aes(x = swc_med, y = H.avg/(LE.avg*40.65), size = freq),shape = 16, color = "brown3") +
+  geom_smooth(method = "loess", fill = "brown3", col = "brown3",alpha = 0.2, aes(x = swc_med, y = H.avg/(LE.avg*40.65), weight = freq), level = .95)+
+  scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
+  labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
        x = "Soil Moisture Anomaly", y = "24hr Maximum Height [z]", size = "N",
        subtitle = "HARV, EMS, & NARR Dataset, June - September 2017-2023")+
-  coord_cartesian(ylim = c(0, 2000)) +
+  coord_cartesian(ylim = c(0,1000)) +
   theme(plot.title = element_text(face = "bold",hjust = 0.5),  # Center the title
         plot.subtitle = element_text(hjust = 0.5),  # Remove major grid lines
         panel.grid.minor = element_blank())   # Center the subtitle
@@ -1466,7 +1525,56 @@ ggplot(binned) +
 
 
 
-####CROSSOVER EVENTS####
+plot(LCL_clean$H,LCL_clean$temp)
+abline(lm(LCL_clean$temp~LCL_clean$H))
+
+
+
+
+
+
+
+
+
+
+dry_avg <- binned %>% filter(binned$swc_med < 0)
+
+dry_avg_lcl <- mean(dry_avg$LCL.avg)
+dry_avg_lcl.stderr <- sd(dry_avg$LCL.avg)/ sqrt(nrow(dry_avg))
+  
+dry_avg_hpbl <- mean(dry_avg$hpbl.avg)
+dry_avg_hpbl.stderr <- sd(dry_avg$hpbl.avg)/sqrt(nrow(dry_avg))
+
+
+wet_avg <- binned %>% filter(binned$swc_med >.05)
+
+wet_avg_lcl <- mean(wet_avg$LCL.avg)
+wet_avg_lcl.stderr <- sd(wet_avg $LCL.avg)/ sqrt(nrow(wet_avg ))
+
+wet_avg_hpbl <- mean(wet_avg$hpbl.avg)
+wet_avg_lcl.stderr <- sd(wet_avg$hpbl.avg)/ sqrt(nrow(wet_avg ))
+
+LCL_drop <- binned %>% filter(binned$swc_med >0 & binned$swc_med<.05)
+
+plot(LCL_drop$swc_med,LCL_drop$LCL.avg)
+abline(lm(LCL_drop$LCL.avg~LCL_drop$swc_med))
+
+Kendall(LCL_drop$swc_med,LCL_drop$LCL.avg)
+
+hpbl_drop <- binned %>% filter(binned$swc_med >0 & binned$swc_med<.2)
+
+plot(hpbl_drop$swc_med,hpbl_drop$hpbl.avg)
+abline(lm(hpbl_drop$LCL.avg~hpbl_drop$swc_med))
+
+Kendall(hpbl_drop$swc_med,hpbl_drop$hpbl.avg)
+summary(lm(hpbl_drop$LCL.avg~hpbl_drop$swc_med))
+
+
+
+####H, Temp, RH, LE and RNET dyanmics daily average daytime only
+
+
+
 
 setwd("/Users/jurado/")
 df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
@@ -1477,15 +1585,92 @@ list_of_dates <- seq(start_date, end_date, by = "day")
 df_prcp$date <- list_of_dates
 
 LCL_clean$date <- date(LCL_clean$datetime)
+LCL_clean$hour <- hour(LCL_clean$datetime)
+LCL_clean <- LCL_clean %>% filter(LCL_clean$hour >5 & LCL_clean$hour <21) 
+
+
+
+
+
+
 
 LCL_DAILY <- LCL_clean %>% group_by(date) %>% summarise(LCL.avg = mean(LCL, na.rm=TRUE),
                                                        LCL.sd = sd(LCL, na.rm=TRUE),
                                                        hpbl.avg = mean(hpbl, na.rm=TRUE),
                                                        hpbl.sd = sd(hpbl, na.rm=TRUE),
-                                                       swc.avg = mean(VSWCAnom.mean.med,na.rm=TRUE
-                                                       ))
+                                                       VSWCAnom.mean.med = mean(VSWCAnom.mean.med,na.rm=TRUE),
+                                                       LE.avg = mean(LE,na.rm=TRUE),
+                                                       H.avg = mean(H,na.rm=TRUE),
+                                                       RNET.avg = mean(RNET,na.rm=TRUE),
+                                                       temp.avg = mean(temp,na.rm=TRUE),
+                                                       RH.avg = mean(RH,na.rm=TRUE)
+                                                       )
 
 LCL_DAILY <- merge(LCL_DAILY,df_prcp, by ="date")
+
+
+
+#########PLOT OF H LE temp, RH, RNET energy budget by soil moisture
+
+LCL_binned <- LCL_DAILY%>% mutate(swc_binned = cut(VSWCAnom.mean.med, breaks= 25))
+
+binned <- LCL_binned  %>% group_by(swc_binned) %>% summarise(LCL.avg = mean(LCL.avg,na.rm=TRUE),
+                                                             
+                                                             LCL.med = median(LCL.avg,na.rm=TRUE),
+                                                             LCL.sd = sd(LCL.avg,na.rm=TRUE),
+                                                             hpbl.avg = mean(hpbl.avg,na.rm=TRUE),
+                                                             hpbl.med = median(hpbl.avg,na.rm =TRUE),
+                                                             temp.avg = mean(temp.avg,na.rm=TRUE),
+                                                             LE.avg = mean(LE.avg,na.rm=TRUE),
+                                                             H.avg = mean(H.avg,na.rm=TRUE),
+                                                             RH.avg = mean(RH.avg,na.rm=TRUE),
+                                                             RNET.avg = mean(RNET.avg,na.rm=TRUE),
+                                                             hpbl.sd = sd(hpbl.avg,na.rm=TRUE),
+                                                             swc_avg= mean(VSWCAnom.mean.med, na.rm=TRUE),
+                                                             swc_med = median(VSWCAnom.mean.med, na.rm=TRUE),
+                                                             freq = n())
+
+
+binned$LCL.std.err <- binned$LCL.sd/(sqrt(binned$freq))
+binned$hpbl.std.err <- binned$hpbl.sd/(sqrt(binned$freq))
+
+
+#filter by low 
+binned <- binned %>% filter(binned$freq > 10)
+
+
+###
+
+
+ggplot(binned) +
+  geom_point(aes(x = swc_med, y =LE.avg*40.65, size = freq),shape = 17, color = "cadetblue4") + 
+  scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
+  geom_smooth(method = "loess", fill = "cadetblue4", alpha = 0.2, col = "cadetblue4",aes(x = swc_med, y = LE.avg*40.65,weight = freq), level = .9)+
+  labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
+       x = "X-axis", y = "Y-axis", size = "Count")+
+  geom_point(aes(x = swc_med, y = H.avg, size = freq),shape = 16, color = "brown3") +
+  geom_smooth(method = "loess", fill = "brown3", col = "brown3",alpha = 0.2, aes(x = swc_med, y = H.avg, weight = freq), level = .95)+
+  scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
+  labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
+       x = "Soil Moisture Anomaly", y = "24hr Maximum Height [z]", size = "N",
+       subtitle = "HARV, EMS, & NARR Dataset, June - September 2017-2023")+
+  coord_cartesian(ylim = c(0,250)) +
+  theme(plot.title = element_text(face = "bold",hjust = 0.5),  # Center the title
+        plot.subtitle = element_text(hjust = 0.5),  # Remove major grid lines
+        panel.grid.minor = element_blank())   # Center the subtitle
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #do two graphs, on a histogram of rain patterns, and one bar chart comparing crossover
@@ -1544,6 +1729,9 @@ title("Precipitation Density Histogram")
 subtitle="HARV & EMS June-September 2017-2023"
 mtext(subtitle)
 par(new = TRUE) 
+
+
+
 
 
 DRY_mean <- mean(LCL_DAILY_DRY_prec$prec)

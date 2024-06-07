@@ -1212,6 +1212,29 @@ summary(lm(ET_PRECIP_SURPLUS$diff~ET_PRECIP_SURPLUS$year))
 
 
 
+############Correlation between LCL and Evaporative surplus / deficit
+
+
+ET_PRECIP <- ET_PRECIP  %>% filter(year < 2023)
+PBL_temp <- PBL %>% filter(year >1991 & year < 2023)
+PBL_temp$dist_diff <- PBL_temp$hpbl - PBL_temp$lcl.mean
+
+mean(ET_PRECIP$diff)
+
+
+plot(PBL_temp$lcl.mean,ET_PRECIP$diff)
+abline(h=0)
+abline(h=120)
+abline(v=590)
+cor.test(PBL_temp$lcl.mean,ET_PRECIP$diff)
+
+
+
+
+
+
+
+
 
  #########################Mean Variables CLASS Model#############################
 
