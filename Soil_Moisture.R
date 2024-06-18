@@ -396,6 +396,19 @@ data <- data.frame(
   Score = c(5, 6, 7, 8, 9, 10)
 )
 
+#soil moisture efficiency plot
+
+df_anom_precip_test <- df_anom_precip
+
+
+df_anom_precip_test <- df_anom_precip_test %>% filter(VSWC.diff > 0)
+
+Kendall(df_anom_precip_test$prec,df_anom_precip_test$VSWC.diff)
+cor.test(df_anom_precip_test$prec,df_anom_precip_test$VSWC.diff)
+
+plot(df_anom_precip_test$prec,df_anom_precip_test$VSWC.diff)
+abline(lm(df_anom_precip_test$VSWC.diff~df_anom_precip_test$prec))
+summary(lm(df_anom_precip_test$VSWC.diff~df_anom_precip_test$prec))
 
 
 
@@ -491,14 +504,375 @@ rain_quant <- hf300_05_daily_m$prec %>% quantile(prob=c(.25,.5,.75,.90,.95), typ
 
 
 
-###WATER COLUMN PERCENT FROM EVAPOTRANPSIRATION 
+#####REFINED RAIN EVENT SESNSING####
+#using df anom and
 
 
-#Get more comprehensive RH data for better LCL data
+hf001_10_15min_m <- read_csv("Harvard_Forest/hf001-10-15min-m.csv")
+df_anom_sm <- df_anom
+
+# Create a new data frame with precipitation sums at 30-minute intervals
+hf001_10_30min_m <- hf001_10_15min_m  %>%
+  mutate(datetime = floor_date(datetime, "30 minutes")) %>%
+  group_by(datetime) %>%
+  summarize(precipitation_sum = sum(prec, na.rm = TRUE))
+
+df_anom_sm_prec <- merge(df_anom_sm,hf001_10_30min_m, by ="datetime")
+
+# Assuming your data frame is named df and has columns "datetime" and "precipitation"
+
+# Initialize the new column with NA
+df_anom_sm_prec$is_raining <- NA
+
+# Loop through each row to set the value of is_raining
+for (i in 1:nrow(df_anom_sm_prec)) {
+  if (df_anom_sm_prec$precipitation[i] > 0) {
+    # Check previous 6 rows
+    if (i > 23 && all(df_anom_sm_prec$precipitation[(i-23):(i-1)] == 0)) {
+      df_anom_sm_prec$is_raining[(i-6)] <- "START"
+    }
+    # Check next 48 rows
+    if (i <= (nrow(df_anom_sm_prec) - 23) && all(df_anom_sm_prec$precipitation[(i+1):(i+23)] == 0)) {
+      df_anom_sm_prec$is_raining[(i+23)] <- "STOP"
+    }
+  }
+}
 
 
 
 
+# Initialize new DataFrame
+results <- data.frame(datetime = as.POSIXct(character()), precipitation = numeric(), 
+                      initial_soil_moisture = numeric(), final_soil_moisture = numeric())
+
+# Loop to calculate initial soil moisture, final soil moisture, precipitation sum and datetime
+for (i in 1:nrow(df_anom_sm_prec)) {
+  if (!is.na(df_anom_sm_prec$is_raining[i]) && df_anom_sm_prec$is_raining[i] == "START") {
+    # Calculate initial soil moisture (mean of 6 rows including and after START)
+    if (i + 5 <= nrow(df_anom_sm_prec)) {
+      initial_soil_moisture <- mean(df_anom_sm_prec$VSWCAnom.mean.med[i:(i + 5)], na.rm = TRUE)
+    } else {
+      initial_soil_moisture <- NA
+    }
+    
+    # Find the corresponding STOP and calculate values until then
+    stop_index <- which(df_anom_sm_prec$is_raining == "STOP" & seq_along(df_anom_sm_prec$is_raining) > i)
+    if (length(stop_index) > 0) {
+      stop_index <- stop_index[1]
+      # Calculate precipitation sum between START and STOP
+      precip_sum <- sum(df_anom_sm_prec$precipitation_sum[i:(stop_index - 1)], na.rm = TRUE)
+      
+      # Calculate final soil moisture (mean of 48 rows up to STOP)
+      if (stop_index + 23 <= nrow(df_anom_sm_prec)) {
+        final_soil_moisture <- mean(df_anom_sm_prec$VSWCAnom.mean.med[(stop_index):(stop_index + 23)], na.rm = TRUE)
+      } else {
+        final_soil_moisture <- NA
+      }
+      
+      # Add row to results
+      new_row <- data.frame(
+        datetime = df_anom_sm_prec$datetime[i],
+        precipitation = precip_sum,
+        initial_soil_moisture = initial_soil_moisture,
+        final_soil_moisture = final_soil_moisture
+      )
+      results <- rbind(results, new_row)
+    }
+  }
+}
+
+results$sm_diff <- results$final_soil_moisture-results$initial_soil_moisture
+results$prec_eff <- results$sm_diff/results$precipitation
+results <- results %>% filter(precipitation >0)
+
+mean(df_anom_sm_prec$VSWCAnom.mean.med)
+
+
+quantile(results$precipitation, probs=c(.70,.75,.90))
+
+
+results<- results[order(results$precipitation), ]
+
+# Fit a LOESS model
+loess_model <- loess(sm_diff~ precipitation, data = results, span = 0.3)  # span is a smoothing parameter
+
+# Generate predictions with standard errors
+pred <- predict(loess_model, newdata = results, se = TRUE)
+
+# Add predictions and confidence intervals to the data frame
+results$y_pred <- pred$fit
+
+
+####Logistic fit###
+
+SM.logistic = nls(sm_diff ~ (K * S0) / (S0 + (K - S0) * exp(-r * precipitation)),
+                  start = list(S0 = .01, r = 0.02, K = 0.2),
+                  data = results, trace = TRUE)
+
+summary(SM.logistic)
+
+results_test <- results %>% filter(initial_soil_moisture >0)
+
+SM.logistic_dry = nls(sm_diff ~ (K * S0) / (S0 + (K - S0) * exp(-r * precipitation)),
+                  start = list(S0 = .01, r = 0.02, K = 0.2),
+                  data = results_test, trace = TRUE)
+
+summary(SM.logistic_dry)
+
+
+results_test <- results %>% filter(initial_soil_moisture < 0)
+
+SM.logistic_dry = nls(sm_diff ~ (K * S0) / (S0 + (K - S0) * exp(-r * precipitation)),
+                      start = list(S0 = .01, r = 0.02, K = 0.2),
+                      data = results_test, trace = TRUE)
+
+summary(SM.logistic_dry)
+
+
+
+
+# Obtain the predicted values
+predicted <- predict(SM.logistic, newdata = results)
+
+# Create a data frame with the predictor and predicted values
+plot_data <- data.frame(precipitation = results$precipitation,
+                        predicted = predicted)
+
+plot(plot_data$precipitation,plot_data$predicted)
+
+
+# Provide initial parameter estimates
+start_vals <- list(a = 10, b = 0.1)
+
+# Fit the nonlinear model using nls
+fit <- nls(y ~ nonlinear_model(x, a, b), start = start_vals)
+
+
+
+
+
+plot(results$precipitation,results$sm_diff,
+     col = alpha(ifelse(results$initial_soil_moisture >0,"deepskyblue3","lightsalmon4"), 0.35),
+     lwd =1.5,
+     pch = 16,
+     xlab = "Precipitation [mm]",
+     ylab = "Soil Moisture Anomaly Difference",
+)
+abline(h=0,lwd =1.5,lty =2)
+abline(v=19.75,lty =3, col ="darkgrey",lwd =1.5)
+abline(v=36.87,lty =3, col ="darkgrey",lwd =1.5)
+par(new=TRUE)
+
+plot(results$precipitation,results$sm_diff,
+     col = alpha(ifelse(results$initial_soil_moisture >0,"deepskyblue3","lightsalmon4"), 0.35),
+     lwd =1.5,
+     pch = 16,
+     xlab = "Precipitation [mm]",
+     ylab = "Soil Moisture Anomaly Difference",
+)
+lines(plot_data$precipitation,plot_data$predicted, lwd = 2)
+abline(h=0,lwd =1.5,lty =2)
+abline(v=19.75,lty =3, col ="darkgrey",lwd =1.5)
+abline(v=36.87,lty =3, col ="darkgrey",lwd =1.5)
+legend(80,-.03,legend=c("Wetter","Drier"),
+       col= c("deepskyblue3","lightsalmon4"),
+       pch=c(16,16), ncol=1,cex=1, bty = "n", pt.lwd = 1.5)
+title("Soil Moisture Response to Rain Events")
+subtitle = "HARV June - September of 2017-2023"
+mtext(subtitle)
+text(15, .1, substitute(paste('75%')), col ="darkgrey")
+text(32, .1, substitute(paste('90%')), col ="darkgrey")
+text(60, .1, substitute(paste('Top 10% of Storms')), col ="darkgrey")
+
+
+results_test <- results
+
+
+results_test <- results_test %>% filter(precipitation < 9)
+
+median(results_test$precipitation, na.rm =TRUE)
+median(results_test$sm_diff, na.rm = TRUE)
+
+cor.test(results_test$precipitation,results_test$sm_diff)
+
+summary(lm(results_test$sm_diff~results_test$precipitation))
+
+####How has # of days between rain increased####
+
+library(readr)
+hf300_05_daily_m <- read_csv("hf300-05-daily-m.csv")
+
+
+hf300_05_daily_m$year <- year(hf300_05_daily_m$date)
+hf300_05_daily_m$month <- month(hf300_05_daily_m$date)
+
+hf300_05_daily_m <- hf300_05_daily_m %>% filter(month > 5 & month < 10)
+hf300_05_daily_m$prec <- ifelse(hf300_05_daily_m$prec < 1, 0,hf300_05_daily_m$prec  )
+
+
+
+# Create a new column 'not_raining' to indicate days with no precipitation
+DaysOfGoodRain <- hf300_05_daily_m %>%
+  mutate(not_raining = ifelse(prec <= 20 & prec >= 8, 1, 0))
+
+# Group the data by 'year' and count the number of days with 'not_raining' == 1
+days_not_raining <- DaysWithoutRain  %>%
+  group_by(year) %>%
+  summarise(days_not_raining = sum(not_raining))
+
+
+cor.test(days_not_raining$year,days_not_raining$days_not_raining)
+plot(days_not_raining$year,days_not_raining$days_not_raining)
+
+
+results_dry<- results %>% filter(initial_soil_moisture <0)
+
+results_wet <- results %>% filter(initial_soil_moisture >0)
+
+t.test(results_dry$sm_diff,results_wet$sm_diff)
+
+mean(results_dry$sm_diff) - mean(results_wet$sm_diff, na.rm=TRUE)
+
+#####Precipitation Gini Index by Year###
+
+# Install the ineq package if it's not installed
+install.packages("ineq")
+
+# Load the package
+library(ineq)
+
+
+hf300_05_daily_m_test <- hf300_05_daily_m
+
+hf300_05_daily_m_test <- hf300_05_daily_m_test %>% filter(prec> 0)
+hf300_05_daily_m_test <- hf300_05_daily_m_test %>% filter(prec > 0)
+
+
+# Group the data by 'year' and count the number of days with 'not_raining' == 1
+Precip_Gini <- hf300_05_daily_m_test %>%
+  group_by(year) %>%
+  summarise(Gini = Gini(prec),
+            prec_sum = sum(prec))
+
+
+
+# Print the result
+plot(Precip_Gini$prec_sum,Precip_Gini$Gini)
+cor.test(Precip_Gini$year,Precip_Gini$Gini)
+"I think this doesnt work since an increasing number of small events helps increase their cumulative total"
+
+
+######PCI Index####
+install.packages("precintcon")
+library(precintcon)
+library(tidyr)
+library(dplyr)
+
+## 
+# Performing the Precipitation Concentration Index analysis
+#Must be a data set of year and month with each day of the month as a row
+
+hf300_05_daily_m_test <- hf300_05_daily_m
+hf300_05_daily_m_test$month = month(hf300_05_daily_m_test$date) 
+hf300_05_daily_m_test$day = day(hf300_05_daily_m_test$date)
+hf300_05_daily_m_test$year = year(hf300_05_daily_m_test$date) 
+
+hf300_05_daily_m_test <- data.frame(year = hf300_05_daily_m_test$year,
+                                   month = hf300_05_daily_m_test$month,
+                                    day = hf300_05_daily_m_test$day,
+                                   prec = hf300_05_daily_m_test$prec)
+
+
+PCI_df <- hf300_05_daily_m_test %>% pivot_wider(names_from = day,
+                                                values_from = prec,
+                                                values_fill = list(prec = NA))
+
+
+PCI_df <- PCI_df %>% rename_with(~ paste0("d", .x), starts_with("9"))
+
+PCI_df[PCI_df == 0] <- NA
+
+
+pci_result <- pci(as.daily(PCI_df,na.value = NA))
+
+
+plot(pci_result$year,pci_result$pci)
+
+cor.test(pci_result$year,pci_result$pci)
+
+
+
+#########PVI #######
+# Extract Year from Date
+
+
+
+# Aggregate annual precipitation
+annual_precip <- hf300_05_daily_m_test%>%
+  group_by(year) %>%
+  summarise(annual_precip = sum(prec),
+            mean_annual_precip = mean(prec),
+            sd_annual_precip = sd(prec))
+
+
+
+# Calculate PVI for each year
+annual_precip$PVI <- annual_precip$mean_annual_precip/annual_precip$sd_annual_precip 
+
+# Plot the evolution of PVI over 30 years
+ggplot(annual_precip, aes(x = year, y = PVI)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Evolution of Precipitation Variability Index (PVI) Over 30 Years",
+       x = "Year",
+       y = "PVI") +
+  theme_minimal()
+
+cor.test(annual_precip$year,annual_precip$PVI)
+summary(lm(annual_precip$PVI~annual_precip$year))
+
+
+annual_precip_1900 <- annual_precip %>% filter(year <2000)
+annual_precip_2000 <- annual_precip %>% filter(year >=2000)
+
+t.test(annual_precip_1900$PVI,annual_precip_2000$PVI)
+mean(annual_precip_2000$PVI,na.rm=TRUE) - mean(annual_precip_1900$PVI,na.rm=TRUE)
+
+
+
+##### CDD maximum number of days of consecutive dry days####
+
+
+library(readr)
+hf300_05_daily_m <- read_csv("hf300-05-daily-m.csv")
+
+
+hf300_05_daily_m$year <- year(hf300_05_daily_m$date)
+hf300_05_daily_m$month <- month(hf300_05_daily_m$date)
+
+hf300_05_daily_m <- hf300_05_daily_m %>% filter(month > 5 & month < 10)
+hf300_05_daily_m$prec <- ifelse(hf300_05_daily_m$prec < 1, 0,hf300_05_daily_m$prec  )
+
+hf300_05_daily_m$is_raining <- NA
+
+hf300_05_daily_m$is_raining <- ifelse(hf300_05_daily_m$prec >0, 1,0 )
+
+
+
+
+
+# Function to calculate the maximum consecutive 0s
+max_consecutive_zeros <- function(rain_vector) {
+  rle_result <- rle(rain_vector)
+  max_length <- max(rle_result$lengths[rle_result$values == 0], na.rm = TRUE)
+  return(max_length)
+}
+
+# Group by year and calculate the maximum consecutive days without rain
+max_days_without_rain <-hf300_05_daily_m %>%
+  group_by(year) %>%
+  summarise(max_consecutive_no_rain = max_consecutive_zeros(is_raining))
+plot(max_days_without_rain$year,max_days_without_rain$max_consecutive_no_rain)
 
 
 

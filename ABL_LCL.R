@@ -1522,6 +1522,12 @@ ggplot(binned) +
 
 
 
+LCL_clean_stats <- binned
+
+LCL_clean_stats <- LCL_clean_stats %>% filter(swc_med >= .075)
+weighted_mean <- weighted.mean(LCL_clean_stats$RNET.avg, LCL_clean_stats$freq)
+
+
 
 
 
@@ -1689,11 +1695,45 @@ LCL_CROSS_WET_percent <-  sum(LCL_DAILY_WET$CROSSOVER ==TRUE)/length(LCL_DAILY_W
 LCL_CROSS_DRY_PREC_percent <- sum(LCL_DAILY_DRY$CROSSOVER_PREC ==TRUE)/length(LCL_DAILY_DRY$CROSSOVER_PREC)
 LCL_CROSS_WET_PREC_percent <-  sum(LCL_DAILY_WET$CROSSOVER_PREC ==TRUE)/length(LCL_DAILY_WET$CROSSOVER_PREC)
 
-
 #% of times the LCL crosses the ABL when in Dry conditions = 68.64%
 #% of times the LCL crosses the ABL when in Wet conditions = 81.39%
 #% of times the LCL crosses the ABL when in Dry conditions and it rains =  36.23%
 #% of times the LCL crosses the ABL when in Wet conditions and it rains =  50%
+
+##CHI squared test of signficance in percent difference#
+# Create a contingency table
+crossover_table <- matrix(c(197, 90, 210, 48), nrow = 2, byrow = TRUE)
+colnames(crossover_table ) <- c("Yes", "No")
+rownames(crossover_table ) <- c("Dry", "Wet")
+
+# Print the contingency table
+print(crossover_table)
+
+# Perform the chi-squared test
+test <- chisq.test(crossover_table)
+
+# Print the test result
+print(test)
+
+#CHI Squared of crossover and precip
+
+# Create a contingency table
+crossover_prec_table <- matrix(c(104, 183, 129, 129), nrow = 2, byrow = TRUE)
+colnames(crossover_prec_table) <- c("Yes", "No")
+rownames(crossover_prec_table) <- c("Dry", "Wet")
+
+# Print the contingency table
+print(crossover_prec_table)
+
+# Perform the chi-squared test
+test <- chisq.test(crossover_prec_table)
+
+# Print the test result
+print(test)
+
+
+
+
 
 #Average amount of rain when we have crossover and it does rain = 
 mean(LCL_DAILY_DRY$prec_mm)
