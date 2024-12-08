@@ -140,7 +140,6 @@ df_sm <- df_sm %>% filter(VSWCFinalQF == 0 )
 df5 <- df_sm
 
 
-
 df5$datetime <- as.POSIXct(df5$endDateTime, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC") 
 df5$datetime<- as.POSIXct(df5$datetime, format = "%Y-%m-%dT%H:%M:%S", tz = " 	EST") 
 
@@ -196,21 +195,9 @@ plot(df_anom$datetime,df_anom$VSWCAnom.mean.med,type = "l", xlim = c(startdate,e
 
 
 
-plot(LCL$datetime,LCL$LCL, type = "l", ylim= c(0,2500))
-plot(LCL$datetime,LCL$RHMean, type = "l", ylim= c(0,100))
-
 plot(df_anom$datetime,df_anom$VSWCAnom.mean.med, type = "l")
-plot(LCL$datetime,LCL$tempRHMean, type = "l")
-###'IS HF SOIL RAIN IMPULSE RESISTANT? DELUGES DO NOT SIGNIFICANTLY INCREASE SM,
-###'But sustained rain does.Pair soil moisture data with rain data to check
-###'Can I quantify the soil response to rain proportionately? Rain amount on x axis,
-###'anomaly of soil moisture in y
-###'By extension, what is the percent evap given by land when soil is wet versus during days
-###'of heavy rain?
-###'
 
 
-####WEIGHTED AV$ERAGE IS .144, about field capacity?
 
 
 ##RESPONSE OF SOIL MOISTURE TO RAIN (Day after)##
@@ -230,7 +217,6 @@ startdate = as.POSIXct("2017-06-01",format="%Y-%m-%d", tz = "UTC")
 enddate = as.POSIXct("2017-09-30",format="%Y-%m-%d", tz = "UTC")
 
 plot(df_anom_daily$date,df_anom_daily$VSWC.mean, xlim =c(startdate,enddate),type="l")
-lines(hf300_05_daily_m$date,hf300_05_daily_m$prec, xlim =c(startdate,enddate),type="l" )
 
 ###Soil moisture anomaly in response to rain, shifted by one day
 df_anom_precip <- merge(hf300_05_daily_m,df_anom_daily,by ="date")
@@ -487,8 +473,9 @@ median(cluster2)
 
 
 
-
-
+######################################################
+####Start here after generating soil moisture data####
+######################################################
 
 #what are the percentiles of rainfall by daily event?
 
@@ -507,8 +494,9 @@ rain_quant <- hf300_05_daily_m$prec %>% quantile(prob=c(.25,.5,.75,.90,.95), typ
 #####REFINED RAIN EVENT SESNSING####
 #using df anom and
 
+setwd('/Users/jurado/Harvard_Forest')
 
-hf001_10_15min_m <- read_csv("Harvard_Forest/hf001-10-15min-m.csv")
+hf001_10_15min_m <- read_csv("hf001-10-15min-m.csv")
 df_anom_sm <- df_anom
 
 # Create a new data frame with precipitation sums at 30-minute intervals
@@ -648,41 +636,40 @@ start_vals <- list(a = 10, b = 0.1)
 fit <- nls(y ~ nonlinear_model(x, a, b), start = start_vals)
 
 
-
-
-
-plot(results$precipitation,results$sm_diff,
-     col = alpha(ifelse(results$initial_soil_moisture >0,"deepskyblue3","lightsalmon4"), 0.35),
-     lwd =1.5,
-     pch = 16,
+plot(results$precipitation, results$sm_diff,
+     col = ifelse(results$initial_soil_moisture > 0, "deepskyblue3", "lightsalmon4"),
+     lwd = 1.5,
+     pch = ifelse(results$initial_soil_moisture > 0, 16, 17),  # Different shapes for wet (16) and dry (17)
      xlab = "Precipitation [mm]",
      ylab = "Soil Moisture Anomaly Difference",
+     cex.lab = 1.2  # Increase the size of the labels
 )
-abline(h=0,lwd =1.5,lty =2)
-abline(v=19.75,lty =3, col ="darkgrey",lwd =1.5)
-abline(v=36.87,lty =3, col ="darkgrey",lwd =1.5)
-par(new=TRUE)
 
-plot(results$precipitation,results$sm_diff,
-     col = alpha(ifelse(results$initial_soil_moisture >0,"deepskyblue3","lightsalmon4"), 0.35),
-     lwd =1.5,
-     pch = 16,
-     xlab = "Precipitation [mm]",
-     ylab = "Soil Moisture Anomaly Difference",
-)
-lines(plot_data$precipitation,plot_data$predicted, lwd = 2)
-abline(h=0,lwd =1.5,lty =2)
-abline(v=19.75,lty =3, col ="darkgrey",lwd =1.5)
-abline(v=36.87,lty =3, col ="darkgrey",lwd =1.5)
-legend(80,-.03,legend=c("Wetter","Drier"),
-       col= c("deepskyblue3","lightsalmon4"),
-       pch=c(16,16), ncol=1,cex=1, bty = "n", pt.lwd = 1.5)
+abline(h = 0, lwd = 1.5, lty = 2)
+abline(v = 19.75, lty = 3, col = "darkgrey", lwd = 1.5)
+abline(v = 36.87, lty = 3, col = "darkgrey", lwd = 1.5)
+
+par(new = TRUE)
+
+lines(plot_data$precipitation, plot_data$predicted, lwd = 2)
+abline(h = 0, lwd = 1.5, lty = 2)
+abline(v = 19.75, lty = 3, col = "darkgrey", lwd = 1.5)
+abline(v = 36.87, lty = 3, col = "darkgrey", lwd = 1.5)
+
+legend(80, -0.03,
+       legend = c("Wetter", "Drier"),
+       col = c("deepskyblue3", "lightsalmon4"),
+       pch = c(16, 17),  # Update shapes in legend to match plot
+       ncol = 1, cex = 1, bty = "n", pt.lwd = 1.5)
+
 title("Soil Moisture Response to Rain Events")
 subtitle = "HARV June - September of 2017-2023"
 mtext(subtitle)
-text(15, .1, substitute(paste('75%')), col ="darkgrey")
-text(32, .1, substitute(paste('90%')), col ="darkgrey")
-text(60, .1, substitute(paste('Top 10% of Storms')), col ="darkgrey")
+
+text(15, 0.1, substitute(paste('75%')), col = "darkgrey")
+text(32, 0.1, substitute(paste('90%')), col = "darkgrey")
+text(60, 0.1, substitute(paste('Top 10% of Storms')), col = "darkgrey")
+
 
 
 results_test <- results

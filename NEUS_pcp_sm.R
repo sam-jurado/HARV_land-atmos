@@ -21,182 +21,9 @@ library(raster) # package for raster manipulation
 library(rgdal)
 library(sf)
 library(usmap) #import the package
-library(ggplot2) #use ggplot2 to add layer for visualization
-
-
-######CLEANING NC FILES######
-
-setwd("/Users/jurado/Harvard_Forest")
-nc_data <- nc_open('soilm.mon.mean.nc')
-
-
-lon <- ncvar_get(nc_data, "lon")
-lat <- ncvar_get(nc_data, "lat", verbose = F)
-soilm <- ncvar_get(nc_data, "soilm")
-
-dim(soilm) #check dimensions
-
-fillvalue <- ncatt_get(nc_data, "soilm", "_FillValue") #check what the fill value is
-soilm[soilm == fillvalue$value] <- NA #replace fill values with NA
-
-
-
-
-# extract some specific ranges
-soilm.slice <- soilm[,,1] 
-
-
-LatIdx <- which( nc_data$var$lat$vals > 46126718 | nc_data$var$lat$vals < 4812618)
-LonIdx <- which( nc_data$dim$x$vals > 630779 & nc_data$dim$x$vals < 830779)
-soilm.slice <- ncvar_get(nc_data, "soilm")[ LonIdx, LatIdx,1]
-nc_close(nc_data)
-
-
-
-#soilm.slice <- soilm[,,1] 
-r <- raster(t(soilm.slice), xmn=min(lon), xmx=max(lon), ymn=min(lat), ymx=max(lat), crs=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs+ towgs84=0,0,0"))
-
-r <- flip(r, direction='y')
-plot(r)
-
-#################
-library(terra)
-
-r <- rast('soilm.mon.mean.nc')
-r
-soilm <- r["soilm"]
-soilm
-
-e <- c(0, 11313351, 0, 8976020 ) |> ext()
-
-soilm_crop <- crop(soilm, e)
-soilm_crop
-
-plot(soilm_crop)
-
-
-
-
-
-
-####Setting up a square#####
-
-# set the radius for the plots
-radius <- 100000 # radius in meters (100 km)
-
-#Northing and Easting of Petersham
-
-northing <- 4712618
-easting <- 730779
-
-
-
-# define the plot edges based upon the plot radius. 
-
-yPlus <- northing+radius
-xPlus <- easting+radius
-yMinus <- northing-radius
-xMinus <- easting-radius
-ID= "HF Study Site"
-
-# calculate polygon coordinates for each plot centroid. 
-square=cbind(xMinus,yPlus,  # NW corner
-             xPlus, yPlus,  # NE corner
-             xPlus,yMinus,  # SE corner
-             xMinus,yMinus, # SW corner
-             xMinus,yPlus)  # NW corner again - close ploygon
-
-#Square Coordinates#
-
-
-
-
-# create spatial polygons from coordinates
-polys <- SpatialPolygons(mapply(function(poly, id) {
-  xy <- matrix(poly, ncol=2, byrow=TRUE)
-  Polygons(list(Polygon(xy)), ID=id)
-}, 
-split(square, row(square)), ID),
-proj4string=CRS(as.character("+proj=utm +zone=11 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")))
-
-
-#US Map
-library(ggplot2)
-library(ggmap)
-library(maps)
-library(mapdata)
-
-usa <- map_data("usa") 
-states <- map_data("state")
-rect <- data.frame(
-  x = c(-73.40645, -70.97355, -70.97355, -73.40645),
-  y = c(43.42425, 43.42425, 41.6257,  41.6257)
-)
-
-
-
-
-north_east <- subset(states, region %in% c("connecticut", "maine", 
-                                           "massachusetts", "new hampshire", 
-                                           "new jersey", "new york", "pennsylvania",
-                                           "rhode island","vermont"))
-
-gg1 <- ggplot() + geom_polygon(data = north_east, aes(x=long, y = lat, group = group)) + 
-  geom_polygon(data = north_east, aes(x = long, y = lat, group = group), color = "white") + 
-  coord_fixed(1.3)
-
-gg1+
-  geom_polygon(data = rect, aes(x, y, group = 1),fill = NA, color = "red")+
-  ggtitle("Northeastern United States Study Area")
-
-
-
-
-
-
-
-
-
-
-
-
-####Using Harv Data#####
-
-install.packages("anytime")   # Install anytime package
-library(lubridate)
-library(dplyr)
+library(ggplot2) #use ggplot2 to add layer for visualizatio
 library(readr)
 library("anytime")   
-
-setwd("/Users/jurado/Harvard_Forest")
-df_sm <- read.csv("hf206-03-HK-understory.csv")
-
-setwd("/Users/jurado/")
-
-df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
-#Monthly
-
-df_sm$date <- format(as.POSIXct(df_sm$datetime), format = "%Y-%m-%d") 
-dfMONTHLY <- df_sm %>% group_by(date) %>% summarise(swc1 = mean(swc1_ave, na.rm = TRUE),
-                                                    swc2 = mean(swc2_ave, na.rm = TRUE),
-                                                    swc3 = mean(swc3_ave, na.rm = TRUE),
-                                                    swc4 = mean(swc4_ave, na.rm = TRUE))
-
-#Filter
-
-
-dfMONTHLY$swc_avg <- rowMeans(dfMONTHLY[ , c(2,3,4,5)], na.rm=TRUE)
-
-
-dfMONTHLY$date <- anydate(dfMONTHLY$date) 
-plot(dfMONTHLY$date,dfMONTHLY$swc_avg,type="l", xlab = "Time", ylab = "Soil Water Content")
-abline(lm(dfMONTHLY$swc_avg ~ dfMONTHLY$date), lty = 2, lwd =2)
-title(expression(paste(bold('Soil Water Content'))))
-subtitle = "HEM 06/01/09 - 01/01/23, Soil Plots 1-4"
-mtext(subtitle)
-
-
-
 
 
 
@@ -470,6 +297,12 @@ for(x in 1964:2023){
   print(q)
 }
 
+# Create a new dataframe with year and total precipitation
+yearly_precip <- df_prcp %>%
+  mutate(year = format(as.Date(date), "%Y")) %>%  # Extract year from the date
+  group_by(year) %>%                              # Group by year
+  summarise(total_precip = sum(prec_mm, na.rm = TRUE))  # Calculate total precipitation
+
 
 
 
@@ -477,28 +310,139 @@ df_perc_hvy <- data.frame(perc_hvy)
 df_perc_hvy$Year <- seq(1964,2023,1)
 df_perc_hvy$Tot <- sum_hvy
 
-plot(df_perc_hvy$Year,df_perc_hvy$perc_hvy,type="l", xlab = "Year", ylab = "Precip. Contributed by Heavy Storms [%]", lwd =2,
-     ylim = c(18,100), pch = 16)
-abline(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year), lty = 1, lwd = 1,col = alpha("black",.6 ))
-title(expression(paste(bold("Yearly Contributions of Heavy Precipitation "))))
+
+# Adjust plot margins to ensure visibility of the right-hand y-axis title
+par(mar = c(5, 4, 4, 5) + 0.5)
+
+# Base plot: Percent of precipitation contributed by heavy storms
+plot(df_perc_hvy$Year, df_perc_hvy$perc_hvy, 
+     type = "l", 
+     xlab = "Year", 
+     ylab = "Precip. Contributed by Heavy Storms [%]", 
+     lwd = 2, 
+     ylim = c(18, 100), 
+     pch = 16)
+
+# Add linear trend line for percent contribution
+abline(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year), 
+       lty = 1, lwd = 1, col = alpha("black", 0.6))
+
+# Add title and subtitle
+title(expression(paste(bold("Yearly Contributions of Heavy Precipitation"))))
 subtitle = "EMS, 1964 - 2023"
 mtext(subtitle)
-par(new = TRUE) 
-plot(df_perc_hvy$Year,df_perc_hvy$Tot,type="b", lwd =2
-    , pch = 15, ylim =c(0,1100), ylab = "", xlab = "", axes = FALSE, col = alpha("cadetblue4",.8))
-# Add y-axis label for y2
+
+# Add new plot (total contribution) on the same figure
+par(new = TRUE)
+plot(df_perc_hvy$Year, df_perc_hvy$Tot, 
+     type = "b", 
+     lwd = 2, 
+     pch = 15, 
+     ylim = c(0, 2000), 
+     ylab = "", 
+     xlab = "", 
+     axes = FALSE, 
+     col = alpha("cadetblue4", 0.8))
+
+# Add right-hand y-axis
 axis(side = 4)
-mtext("Precip. Contributed by Heavy Storms [mm]", side = 4, line = 3)
-abline(lm(df_perc_hvy$Tot ~ df_perc_hvy$Year), lty = 2, lwd = 1,col = alpha("cadetblue4",.8))
-par(mar = c(5, 4, 4, 5) + 0.05)
-legend(1965,1100,legend=c("Percent","Total"), lty=c(1,1),lwd =c(2,2),
-       col= c("black",alpha("cadetblue4",.8)), bty="n")
-       
+mtext("Precip. Totals [mm]", side = 4, line = 3)
+
+# Add linear trend line for total contribution
+abline(lm(df_perc_hvy$Tot ~ df_perc_hvy$Year), 
+       lty = 2, lwd = 1, col = alpha("cadetblue4", 0.8))
+
+# Overlay yearly total precipitation data
+lines(yearly_precip$year, yearly_precip$total_precip, 
+      type = "b", 
+      col = "red", 
+      lwd = 2, 
+      pch = 17)
+
+# Add a legend for all series
+legend(1965, 1100, 
+       legend = c("Percent", "Heavy Precip.", "Total Precip"), 
+       lty = c(1, 1, 1), 
+       lwd = c(2, 2, 2), 
+       col = c("black", alpha("cadetblue4", 0.8), "red"), 
+       pch = c(NA, 15, 17), 
+       bty = "n")
+
+########################################
+
+
+yearly_precip$year <- as.numeric(yearly_precip$year)
+
+
+# Adjust plot margins to ensure visibility of the right-hand y-axis title
+par(mar = c(5, 4, 4, 5))
+
+# Base plot: Total precipitation contributed by heavy storms
+plot(df_perc_hvy$Year, df_perc_hvy$Tot, 
+     type = "b", 
+     lwd = 2, 
+     pch = 15, 
+     ylim = c(0, 2000), 
+     xlab = "Year", 
+     ylab = "Precipitation [mm]",
+     col = alpha("cadetblue4", 0.8))
+
+# Add linear trend line for total contribution by heavy storms
+abline(lm(df_perc_hvy$Tot ~ df_perc_hvy$Year), 
+       lty = 2, lwd = 1, col = alpha("cadetblue4", 0.8))
+
+
+
+# Add linear trend line for yearly total precipitation
+abline(lm(yearly_precip$total_precip~yearly_precip$year), 
+       lty = 2, lwd = 1, col = "black")
+
+# Add yearly total precipitation data (from yearly_precip dataframe)
+lines(yearly_precip$year, yearly_precip$total_precip, 
+      type = "b", 
+      col = "black", 
+      lwd = 2, 
+      pch = 17)
+
+
+
+# Add a legend for both series
+legend("topleft", 
+       legend = c("Heavy Precip. Contribution", "Yearly Total Precipitation"), 
+       lty = c(2, 1), 
+       lwd = c(2, 2), 
+       col = c(alpha("cadetblue4", 0.8), "black"), 
+       pch = c(15, 17), 
+       bty = "n")
+
+
+# Add title and subtitle
+title(expression(paste(bold("Total Precip. and Heavy Storm Contributions"))))
+subtitle = "EMS, 1964 - 2023"
+mtext(subtitle)
+
+
+# Statistical summaries
 summary(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year))
-Kendall(df_perc_hvy$Year,df_perc_hvy$perc_hvy)
+Kendall(df_perc_hvy$Year, df_perc_hvy$perc_hvy)
 
 summary(lm(df_perc_hvy$Tot ~ df_perc_hvy$Year))
-Kendall(df_perc_hvy$Year,df_perc_hvy$Tot)
+Kendall(df_perc_hvy$Year, df_perc_hvy$Tot)
+
+summary(lm(yearly_precip$total_precip~yearly_precip$year))
+Kendall(yearly_precip$year, yearly_precip$total_precip)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -508,97 +452,6 @@ Kendall(df_perc_hvy$Year,df_perc_hvy$Tot)
 
 mean(df_perc_hvy$Tot[51:60])
 mean(df_perc_hvy$Tot[1:10])
-
-
-
-
-
-
-
-
-
-barplot(df_perc_hvy$Tot,names.arg = seq(1965,2022,1),
-        xlab = "Year",
-        ylab = "Heavy Storms Total Precip. [mm]",
-        ylim = c(0,1000))
-title("Heavy Storms Total Precip")
-subtitle = "HEM 1964-2021"
-mtext(subtitle)
-
-
-
-
-
-
-
-
-
-##########################By YEAR###############################
-
-df_prcp <- read.csv("hf300-05-daily-m.csv")
-df_prcp$date <- as.POSIXct(df_prcp$date ,format="%Y-%m-%d", tz= "EST")
-df_prcp <- df_prcp %>% separate(date, sep="-", into = c("year", "month", "day"))
-
-dfYEARLY<- df_prcp %>% group_by(year) %>% summarise(temp.avg = mean(airt, na.rm = TRUE),
-                                                    prec.sum = sum(prec, na.rm = TRUE )/10,
-                                                    airmin.avg = mean(airtmin, na.rm = TRUE)
-                                                       )
-
-plot(dfYEARLY$year,dfYEARLY$prec.sum, type = "l")
-
-plot(dfYEARLY$year,dfYEARLY$temp.avg, type = "l")
-
-plot(dfYEARLY$year,dfYEARLY$airmin.avg, type = "l")
-
-
-df_sm <- read.csv("hf206-03-HK-understory.csv")
-
-
-
-
-#################################Soil Moisture by YEAR#########################
-
-df_sm <- read.csv("hf206-03-HK-understory.csv")
-
-
-
-#Monthly
-
-df_sm$date <- format(as.POSIXct(df_sm$datetime), format = "%Y-%m-%d") 
-df_sm <- df_sm %>% separate(date, sep="-", into = c("year", "month", "day"))
-
-dfMONTHLY <- df_sm %>% group_by(year) %>% summarise(swc1 = mean(swc1_ave, na.rm = TRUE),
-                                                    swc2 = mean(swc2_ave, na.rm = TRUE),
-                                                    swc3 = mean(swc3_ave, na.rm = TRUE),
-                                                    swc4 = mean(swc4_ave, na.rm = TRUE))
-
-dfMONTHLY$swc_avg <- rowMeans(dfMONTHLY[ , c(2,3,4,5)], na.rm=TRUE)
-
-#######################Perc heavy#######################
-
-percent_heavy_rain <- df_perc_hvy %>% mutate(rain_binned = cut(perc_hvy, breaks= 5))
-df_table <- data.frame(table(percent_heavy_rain$rain_binned))
-plot(df_perc_hvy$Year,df_perc_hvy$perc_hvy, type="l")
-abline(h = )
-
-
-
-
-
-###############################COMBINED GRAPH##################################
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

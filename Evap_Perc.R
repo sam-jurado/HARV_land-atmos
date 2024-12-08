@@ -30,6 +30,8 @@ library(zoo)
 library(stringr)
 
 
+
+
 #function that takes lev filepath as a string and return a dataframe of that file
 lev20_reader <- function(filepath){
   watercolumn <- read_csv(filepath)
@@ -216,22 +218,54 @@ reg_low <- lm(VPD_Low$perc_evap~VPD_Low$VSWC.mean)
 mean <- lm(ET_PRECIP_COL_SM$perc_evap~ET_PRECIP_COL_SM$VSWC.mean)
 
 
-plot(ET_PRECIP_COL_SM$VSWC.mean,ET_PRECIP_COL_SM$perc_evap,col = alpha(ET_PRECIP_COL_SM$Col,.8),
-     pch = ET_PRECIP_COL_SM$pch,
-     xlab = "Soil Moisture Anomaly",
-     ylab = "% Water from ET",
-     ylim = c(0,70))
+# Load necessary library for add.color.bar (e.g., raster or custom function)
+install.packages('phytools')
+library(phytools) # `add.color.bar()` is often included in the `raster` package
 
-abline(reg_high, lwd =2, col = "red")
-abline(reg_avg, lwd =2, col = "purple")
-abline(reg_low, lwd =2, col ="blue")
-text(.08, 47, substitute(paste('75% VPD ')), col ="red")
-text(.1, 30, substitute(paste('IQR VPD ')), col ="purple")
-text(.12, 18, substitute(paste('25% VPD ')), col ="blue")
+# Define color ramp palette and assign colors based on VPD
+rbPal <- colorRampPalette(c('blue', 'red'))
+ET_PRECIP_COL_SM$Col <- rbPal(10)[as.numeric(cut(ET_PRECIP_COL_SM$VPD, breaks = 15))]
+
+# Base plot
+plot(ET_PRECIP_COL_SM$VSWC.mean, ET_PRECIP_COL_SM$perc_evap, 
+     col = alpha(ET_PRECIP_COL_SM$Col, 0.8), 
+     pch = ET_PRECIP_COL_SM$pch, 
+     xlab = "Soil Moisture Anomaly", 
+     ylab = "% Water from ET", 
+     ylim = c(0, 70))
+
+# Add regression lines
+abline(reg_high, lwd = 2, col = "red")
+abline(reg_avg, lwd = 2, col = "purple")
+abline(reg_low, lwd = 2, col = "blue")
+
+# Add text annotations
+text(0.08, 47, substitute(paste('75% VPD ')), col = "red")
+text(0.1, 30, substitute(paste('IQR VPD ')), col = "purple")
+text(0.12, 18, substitute(paste('25% VPD ')), col = "blue")
+
+# Add title and subtitle
 title("Precipitable Water from Evapotranspiration")
-subtitle = "HARV, EMS June-September 2017-2023"
+subtitle <- "HARV, EMS June-September 2017-2023"
 mtext(subtitle)
-legend()
+
+# Add color bar
+vpd_min <- min(ET_PRECIP_COL_SM$VPD, na.rm = TRUE)
+vpd_max <- max(ET_PRECIP_COL_SM$VPD, na.rm = TRUE)
+vpd_range <- c(vpd_min, vpd_max)
+
+add.color.bar(
+  leg = 0.15,                      # Position of the legend (adjust as needed)
+  cols = rbPal(10),               # Use the defined color palette
+  title = "Vapor Pressure Deficit [kPa]",           # Title of the color bar
+  lims = vpd_range,               # Limits of the VPD variable
+  digits = 1,                     # Number of decimal places for labels
+  lwd = 4,                        # Width of the color bar
+  outline = TRUE                  # Outline around the color bar
+)
+
+
+
 
 mean(VPD_Low$perc_evap, na.rm=TRUE)
 mean(VPD_High$perc_evap, na.rm=TRUE)

@@ -201,6 +201,7 @@ thornt_P$month <- seq(1,12,1)
 
 thornt_diff <- data.frame(  month = seq(1,12,1),diff = thornt_P$avg - thornt_Evap$avg)
 
+
 plot(thornt_Evap$month,thornt_Evap$avg, type = "b", col = "brown3", lwd=2, xlab = "Month",
      ylab = "Evap. and Precip [mm]", ylim = c(0,240))
 lines(thornt_P$month,thornt_P$avg, type="b",pch = 2, col = "cadetblue3", lwd = 2)
