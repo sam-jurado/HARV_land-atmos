@@ -113,7 +113,7 @@ df_spring$diff_spring = df_spring$prec-df_spring$evap_spring
 #Net water gained in the summer
 df_spring$diff_summer = df_spring$prec_summer- df_spring$evap_summer
 
-#'Spring starts at 128mm of AWHC due to winter surplus (maybe just calculate)
+#'Spring starts at 128mm of AWHC due to winter surplus
 #'This 128mm is added to the evaporative loss of may, when evaporation overcomes precip for first time in year
 #'Thus, this is the start of summer AW
 df_spring$summer_AW = 128 + df_spring$diff_spring
@@ -233,53 +233,8 @@ data1 <- subset(df_spring, regime == "Dry" )
 data2 <- subset(df_spring, regime == "Wet" )
 
 result <- t.test(data1$summer_AW, data2$summer_AW)
-
+print(result)
 #p = .058
-
-
-
-
-#####TASKS, finish this graph, the LCL ABL timeseries, and the LCL ABL diel graph,
-#Then give jackie all the code through github (you have to learn!!!)
-
-#then start the statistics and methods march through all of the graphics,
-#'This means put all the relevant stats in the figure description/ for result discussion,
-#'And then mentioning how you did that in the methods
-
-#Then create your thesis presentation to get the results order and descriptions down
-#This will include gist of discussion and conclusions
-
-
-
-
-#removing outlier 
-quantile(Wet_spring$summer_AW)
-#outlier less than -58.8
-
-quantile(df_spring$summer_AW)
-IQR = 171.525
-
-
-
-quantile(Wet_spring$summer_AW)
-
-#IQR = 96.4
-# 274.025
-# -110
-
-quantile(Dry_spring$summer_AW)
-#IQR = 203
-# no more than 233.15
-# no less than  -227
-
-df_spring_dry.deficit <- df_spring_deficit %>% filter(df_spring_deficit$summer_AW < 233.15)
-
-df_spring_wet.deficit <- df_spring_deficit %>% filter(df_spring_deficit$summer_AW < 274.025)
-
-df_spring_surplus$summer_AW[11]<- NA
-df_spring_surplus$summer_AW[13]<- NA
-df_spring_surplus$summer_AW[7]<- NA
-
 
 ggbarplot(
   df_spring_deficit, x = "regime", y = "summer_AW", 
@@ -310,35 +265,12 @@ ggbarplot(
   fill = "darkgreen",
   xlab = "Spring Moisture Regime",
   ylab = "Summer Water Column Surplus [mm]",
-  ylim = c(-100,250))+
+  ylim = c(-100,350))+
   ggtitle(label= "Available Water Column by Spring Moisture Regime", subtitle ="Fisher Station 1964 - 2023")+
   theme(plot.margin = margin(1,1,3,1, "cm"))+
   theme(plot.title = element_text(hjust = 0.5,face = "bold"),
         plot.subtitle= element_text(hjust = .5),)+
   geom_hline(yintercept = 0, linetype = "dashed", color = "darkgrey")  # Add horizontal line at y = 0
-
-par(mar = c(8, 4.7, 4.1, 2.1), new= TRUE)
-plot(1.5,337-128,xlim = c(0,5),ylim = c(0,250), xlab = "",
-     ylab ="",
-     xaxt = "n",
-     yaxt ="n",
-     bty="n",
-     pch =4)
-par(mar = c(8, 4.7, 4.1, 2.1), new= TRUE)
-plot(.5,112,xlim = c(0,5),ylim = c(0,250), xlab = "",
-     ylab ="",
-     xaxt = "n",
-     yaxt ="n",
-     bty="n",
-     pch =4)
-par(mar = c(8, 4.7, 4.1, 2.1), new= TRUE)
-plot(4.2,315-128,xlim = c(0,5),ylim = c(0,250), xlab = "",
-     ylab ="",
-     xaxt = "n",
-     yaxt ="n",
-     bty="n",
-     pch =4)
-par(mar = c(8, 4.7, 4.1, 2.1), new= TRUE)
 
 
 sd <- df_spring_deficit %>% filter(regime == "Wet")
@@ -366,19 +298,7 @@ print(deficit_ttest)
 
 
 
-
-#######FINAL SUPER GRAPH#####################
-
-
-
-
-
-
-
-
-
-
-
+207.742-187.383
 
 
 

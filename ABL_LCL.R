@@ -1484,7 +1484,7 @@ ggplot(binned) +
   scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
   geom_smooth(method = "loess", fill = "cadetblue4", alpha = 0.2, col = "cadetblue4",aes(x = swc_med, y = LCL.avg,weight = freq), level = .9)+
   labs(title = "ABL and LCL Heights by Soil Moisture Anomaly",
-       x = "X-axis", y = "Y-axis", size = "Count")+
+       x = "X-axis", y = "Y-axis", size = "Count") + 
   geom_point(aes(x = swc_med, y = hpbl.avg, size = freq),shape = 16, color = "brown3") +
   geom_smooth(method = "loess", fill = "brown3", col = "brown3",alpha = 0.2, aes(x = swc_med, y = hpbl.avg, weight = freq), level = .95)+
   scale_size_continuous(range = c(1, 5)) +  # Adjust the range of point sizes as needed
