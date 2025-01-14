@@ -23,6 +23,7 @@ library(sf)
 library(usmap) #import the package
 library(ggplot2) #use ggplot2 to add layer for visualization
 library(stringr)
+library(readr)
 
 GetNetCDFAtCoords <- function(filename, req.coords, req.var, time.var = "time",
                               lon.var = "longitude", lat.var = "latitude"){
@@ -95,8 +96,6 @@ GetNetCDFAtCoords <- function(filename, req.coords, req.var, time.var = "time",
   
   return(dat.out)
 }
-
-
 
 
 
@@ -174,7 +173,7 @@ plot(grand_pbl$datetime,grand_pbl$hpbl,type="l")
 
 library(readr)
 setwd("/Users/jurado/")
-Ha1_ETfill_9222 <- read_csv("Downloads/Ha1_ETfill_9222.csv", na = "-9999")
+Ha1_ETfill_9222 <- read_csv("Downloads/Ha1_LEfill_9222.csv", na = "-9999")
 
 
 
@@ -983,11 +982,6 @@ Kendall(df_pbl_YEARLY$year,df_pbl_YEARLY$hpbl.mean)
 Kendall(LCL_YEARLY$year,LCL_YEARLY$lcl.mean)
 
 
-plot(x, y, ylim=c(-3, 3), xlab="x", ylab="y", pch=16, cex=2)
-# Add error bars
-arrows(x0=x, y0=y-y.sd, x1=x, y1=y+y.sd, code=3, angle=90, length=0.1)
-
-
 
 
 
@@ -1077,7 +1071,6 @@ ems_hourlyustfiltnongf_2023  <- ems_hourlyustfiltnongf_2023  %>% filter(ems_hour
 ems_hourlyustfiltnongf_2023  <- ems_hourlyustfiltnongf_2023  %>% filter(ems_hourlyustfiltnongf_2023 $year <2023)
 
 #TESTING DATA DIFFERENCES
-
 
 
 library(readr)
