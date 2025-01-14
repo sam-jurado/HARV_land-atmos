@@ -54,6 +54,13 @@ setwd(wd)
 h5ls(file)
 
 
+
+
+
+
+
+
+
 #Reading In Data
 
 LE <- h5read(file , "/HARV/dp04/data/fluxH2o/nsae")
@@ -805,6 +812,16 @@ ggplot(data=binned, aes(x=swc.avg, y=EF.avg,weight=Freq)) +
        subtitle = "HARV June-September 2017-2022",
        caption = "Soil Depths .05 - .55m")+
   theme_bw()
+
+
+
+
+
+
+
+
+
+
 
 ############################PRECIP AND EVAPORATION##############################
 

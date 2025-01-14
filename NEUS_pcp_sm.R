@@ -125,10 +125,6 @@ plot(prec_number)
 
 
 
-
-
-
-
 #####SINCE 2000
 df_perc_hvy_2000 <- df_perc_hvy %>% filter(df_perc_hvy$Year > 2000)
 abline(lm(df_perc_hvy_2000$perc_hvy ~ df_perc_hvy_2000$Year), lwd =2, lty =2, col = "red")
@@ -136,131 +132,7 @@ summary(lm(df_perc_hvy_2000$perc_hvy ~ df_perc_hvy_2000$Year))
 Kendall(df_perc_hvy_2000$Year,df_perc_hvy_2000$perc_hvy)
 
 
-
-
-
-df_perc_hvy$Year <- as.integer(df_perc_hvy$Year)
-df_perc_hvy  <- df_perc_hvy [-1,]
-
-bp = barplot(df_perc_hvy$Num,names.arg = seq(1965,2021,1), 
-        main="Number of Storms",
-        xlab = "Year",
-        ylab = "Number of Heavy Storms",
-        ylim = c(0,15))
-lines(predict(lm(df_perc_hvy$Num~df_perc_hvy$Year)),col='black')
-#Create the linear regression
-
-
-
-
-summary(lm(df_perc_hvy$Tot~df_perc_hvy$Year))
-
-
-lm <- data.frame(seq(1965,2021,1))
-colnames(lm)[1] ="x"
-lm$y = (lm$x*2.4782)-4640.5789
-
-barplot(df_perc_hvy$Tot,names.arg = seq(1965,2021,1),
-        main="Heavy Storms Total Precip.",
-        xlab = "Year",
-        ylab = "Heavy Storms Total Precip. [mm]")
-
-
-
-
-
-
-
-barplot(df_perc_hvy$frac,names.arg = seq(1965,2021,1),
-        main="Heavy Storms Average Precip.",
-        xlab = "Year",
-        ylab = "Average Heavy Storm Precip. [mm]")
-lines(predict(lm(df_perc_hvy$frac~df_perc_hvy$Year)),col='black')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#######Heavy Rains Top 10% by year####
-
-
-
-df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
-df_prcp["prec_mm"][df_prcp["prec_mm"] == 0] <- NA
-#df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
-df_prcp$date <- as.Date(df_prcp$date, "%m/%d/%Y")
-df_prcp$date <- update(df_prcp$date, year = df_prcp$year)
-
-perc_hvy <- c()
-sum_hvy <- c()
-perc_90 <- c()
-
-
-
-for(x in 1964:2023){
-  x <- toString(x)
-  print(x)
-  df_prcp <- df_prcp[df_prcp$date >= as.Date(paste(x,"01-01", sep ="-")) & df_prcp$date <= as.Date(paste(x,"12-31",sep = "-")), ]
-  df_prcp <- df_prcp %>% filter( month > 4 &  month <10)
-  q <- quantile(df_prcp$prec_mm, prob=c(.90), type=1, na.rm =TRUE)
-  perc_90  <- append(perc_90 ,q)
-  prcp_sum <- sum(df_prcp$prec_mm, na.rm = TRUE)
-  df_prcp <- df_prcp %>% filter( prec_mm >= q)
-  prcp_H_sum <- sum(df_prcp$prec_mm, na.rm = TRUE)
-  sum_hvy <- append(sum_hvy,prcp_H_sum)
-  percent_heavy <- prcp_H_sum/prcp_sum*100
-  perc_hvy <- append(perc_hvy,percent_heavy)
-  print(percent_heavy)
-  df_prcp <- 
-    df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
-  df_prcp["prec_mm"][df_prcp["prec_mm"] == 0] <- NA
-  df_prcp$date <- as.Date(df_prcp$date, "%m/%d/%Y")
-  df_prcp$date <- update(df_prcp$date, year = df_prcp$year)
-  print(q)
-}
-
-
-
-
-plot(perc_90, type = "l")
-x = seq(1,60,1)
-lm(perc_90~x)
-summary(lm(perc_90~x))
-
-df_perc_hvy <- data.frame(perc_hvy)
-df_perc_hvy$Year <- seq(1964,2023,1)
-df_perc_hvy$Tot <- sum_hvy
-
-plot(df_perc_hvy$Year,df_perc_hvy$perc_hvy,type="b", xlab = "Year", ylab = "Rain Contributed by Heavy Storms [%]", lwd =2)
-abline(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year), lty = 2, lwd = 2)
-title(expression(paste(bold("Yearly Precip. Contributions of Heavy Rainfall"))))
-subtitle = "EMS 01/01/64 - 12/31/23"
-mtext(subtitle)
-
-summary(lm(df_perc_hvy$perc_hvy ~ df_perc_hvy$Year))
-
-
-
-
 ############Top 10% over entire time period########
-
-
-
 
 
 df_prcp <- df_prcp<- read_csv("Downloads/dailyrain_19642023.csv")
@@ -431,21 +303,6 @@ Kendall(df_perc_hvy$Year, df_perc_hvy$Tot)
 
 summary(lm(yearly_precip$total_precip~yearly_precip$year))
 Kendall(yearly_precip$year, yearly_precip$total_precip)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

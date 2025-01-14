@@ -97,53 +97,59 @@ serial = c("20221204T191813Z","20221204T215858Z","20221204T215317Z","20221204T21
            "20230706T002534Z","20230809T214706Z","20230905T014608Z","20231002T181910Z")
 
 
+# Initialize an empty list to store dataframes
+df_list <- list()
 plot_depth = c("1")
-
-
-plot_num = c("5")
-
-
-df_sm <- data.frame()
-
-for (x in 1:length(folder_list)){
+# Loop through plot numbers (1 through 5)
+for (plot in 1:5) {
   
-  wd = paste("/Users/jurado/Harvard_Forest/filesToStack00094",folder_list[x],sep = "/")
-  setwd(wd)
-  yr_mn = year_month[x]
-  ser = serial[x]
+  # Initialize the dataframe for each plot (df1 through df5)
+  df_name <- paste0("df", plot)  # Create dynamic dataframe names like df1, df2, etc.
   
+  df_sm <- data.frame()  # Initialize the dataframe for this plot
   
-  for (x in 1:length(plot_num)){
-    plt_num = plot_num[x]
-    for (x in 1:length(plot_depth)){
-      file = paste("NEON.D01.HARV.DP1.00094.001.00",plt_num,sep ="") #plot_num
-      file = paste(file,".50", sep ="")
-      file = paste(file,plot_depth[x], sep ="")
-      file = paste(file,".030.SWS_30_minute.", sep ="")
-      file = paste(file,yr_mn, sep ="") #year and month
-      file = paste(file,".basic.", sep ="") 
-      file = paste(file,ser, sep ="") #serial
-      file = paste(file,".csv", sep ="") #serial
-      print(file)
-      if (file.exists(file)){
-        sm <- read.csv(file)
-        sm$DEPTH <- as.numeric(plot_depth[x])
-        df_sm <- rbind(df_sm,sm)
+  # Loop through folder_list, year_month, serial and plot_depth as before
+  for (x in 1:length(folder_list)) {
+    
+    # Set working directory for each folder
+    wd = paste("/Users/jurado/Harvard_Forest/filesToStack00094", folder_list[x], sep = "/")
+    setwd(wd)
+    
+    yr_mn = year_month[x]
+    ser = serial[x]
+    
+    for (plt_num in plot) {  # Just use the current plot number, no need for a nested loop
+      for (depth in plot_depth) {
+        
+        # Construct file path
+        file <- paste0("NEON.D01.HARV.DP1.00094.001.00", plt_num, ".50", depth, ".030.SWS_30_minute.", yr_mn, ".basic.", ser, ".csv")
+        
+        # Check if file exists and read it
+        if (file.exists(file)) {
+          sm <- read.csv(file)
+          sm$DEPTH <- as.numeric(depth)
+          
+          # Append the data to the dataframe
+          df_sm <- rbind(df_sm, sm)
+        }
       }
-      
     }
   }
-}  
+  
+  # Filter the dataframe
+  df_sm <- df_sm %>% filter(VSWCFinalQF == 0)
+  
+  # Add the datetime column
+  df_sm$datetime <- as.POSIXct(df_sm$endDateTime, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC")
+  df_sm$datetime <- as.POSIXct(df_sm$datetime, format = "%Y-%m-%dT%H:%M:%S", tz = "EST")
+  
+  # Dynamically assign the dataframe to the list
+  assign(df_name, df_sm)
+  
+  # Optionally, save the dataframe in the list if you want to keep them in a list
+  df_list[[df_name]] <- df_sm
+}
 
-
-df_sm <- df_sm %>% filter(VSWCFinalQF == 0 )
-
-
-df5 <- df_sm
-
-
-df5$datetime <- as.POSIXct(df5$endDateTime, format = "%Y-%m-%dT%H:%M:%S", tz = "UTC") 
-df5$datetime<- as.POSIXct(df5$datetime, format = "%Y-%m-%dT%H:%M:%S", tz = " 	EST") 
 
 #top 2 layers all useable across all sensors, top 1 layer more usable
 
@@ -157,6 +163,7 @@ lines(df2$datetime,df2$VSWCMean,col="orange",lwd=2)
 lines(df3$datetime,df3$VSWCMean,col= "darkgreen",lwd=2)
 lines(df4$datetime,df4$VSWCMean,col="blue",lwd=2)
 lines(df1$datetime,df1$VSWCMean,col="purple",lwd=2)
+
 
 
 #All time mean per sensor
@@ -179,11 +186,16 @@ lines(df3$datetime,df3$VSWCAnom3,col="darkgreen",lwd=2 )
 lines(df4$datetime,df4$VSWCAnom4,col="blue",lwd=2 )
 lines(df1$datetime,df1$VSWCAnom1,col="purple",lwd=2 )
 
+
 #Get Mean of all anomalies
 df_anom <- merge(x = df1, y = df2, by = "datetime", all=TRUE)
 df_anom <- merge(x = df_anom, y = df3, by = "datetime", all=TRUE)
 df_anom <- merge(x = df_anom, y = df4, by = "datetime", all=TRUE)
 df_anom <- merge(x = df_anom, y = df5, by = "datetime", all=TRUE)
+
+################################################
+########df_anom is an important Dataframe#######
+################################################
 
 df_anom <- df_anom[c('datetime', 'VSWCAnom1', 'VSWCAnom2', 'VSWCAnom3', 'VSWCAnom4', 'VSWCAnom5')]
 data <- df_anom[c('VSWCAnom1', 'VSWCAnom2', 'VSWCAnom3', 'VSWCAnom4', 'VSWCAnom5')]
@@ -193,7 +205,6 @@ df_anom$VSWCAnom.mean <- rowMeans(data,na.rm=TRUE)
 plot(df_anom$datetime,df_anom$VSWCAnom.mean, type= "l", xlim = c(startdate,enddate),  ylim = c(-.1,.2))
 df_anom$VSWCAnom.mean.med <- runmed(df_anom$VSWCAnom.mean, k=21)
 plot(df_anom$datetime,df_anom$VSWCAnom.mean.med,type = "l", xlim = c(startdate,enddate),ylim = c(-.1,.2), lwd =2)
-
 
 
 plot(df_anom$datetime,df_anom$VSWCAnom.mean.med, type = "l")
@@ -207,6 +218,14 @@ hf300_05_daily_m$date <- as.POSIXct(hf300_05_daily_m$date, format = "%Y-%m-%d", 
 
 df_anom$date <- substr(as.character(df_anom$datetime), start = 1, stop = 10)
 df_anom$date <- as.POSIXct(df_anom$date, format = "%Y-%m-%d", tz = "UTC") 
+
+
+
+#######################################################################
+###############df_anom_daily is necessary for Evap_Perc.R##############
+#######################################################################
+
+
 
 df_anom_daily <- df_anom %>% group_by(date) %>% summarise(VSWC.mean = mean(VSWCAnom.mean.med, na.rm =TRUE))
 
@@ -229,11 +248,7 @@ plot(df_anom_precip$prec,df_anom_precip$VSWC.mean.shift)
 
 
 
-###'Response of Soil Moisture to Rain itself, neglecting the conditions that 
-###'mightve already been present (negative anomaly for moderate rain falling in
-###' drought (Day After minus day before)
-###' This will tell us how sometimes moderate rain makes a comparable difference
-###' in soil moisture to deluges because the moisture quickly leaves the soil###
+#####Calculating Soil Moisture Response###
 
 
 diff_list <- c()
@@ -253,226 +268,6 @@ df_anom_precip <- merge(hf300_05_daily_m,df_anom_daily,by ="date")
 
 
 
-plot(df_anom_precip$prec,df_anom_precip$VSWC.diff, pch =19,
-     xlab = "Daily Precipitation Total [mm]",
-     ylab = "Soil Moisture Anomaly Difference ",
-     col = alpha(ifelse(df_anom_precip$VSWC.mean.shift >0,"blue","brown"), 0.5))
-abline(h=0)
-
-plot(df_anom_precip$prec,df_anom_precip$VSWC.mean.shift)
-#'add color for how wet the day was afterwards. Brown will be focused towards
-#' the lower end, while blue will be middle and outwards. This will also give 
-#' insight as to whether the result of the rains was above average wet soil or dry.
-
-#Creating a Cluster To Prove my point 
-df_anom_precip <- df_anom_precip[, c("prec", "VSWC.diff")]
-
-df_anom_precip <- na.omit(df_anom_precip)
-
-df_anom_precip <- df_anom_precip %>% filter(prec >= 1)
-
-
-df_anom_precip[, c("prec", "VSWC.diff")] = scale(df_anom_precip[, c("prec", "VSWC.diff")])
-
-# Get the two columns of interest
-df_anom_precip_2cols <- df_anom_precip[, c("prec", "VSWC.diff")]
-
-set.seed(123)
-km.out <- kmeans(df_anom_precip_2cols, centers = 3, nstart = 20)
-km.out
-
-
-# Decide how many clusters to look at
-n_clusters <- 10
-
-# Initialize total within sum of squares error: wss
-wss <- numeric(n_clusters)
-
-set.seed(123)
-
-# Look over 1 to n possible clusters
-for (i in 1:n_clusters) {
-  # Fit the model: km.out
-  km.out <- kmeans(df_anom_precip_2cols, centers = i, nstart = 20)
-  # Save the within cluster sum of squares
-  wss[i] <- km.out$tot.withinss
-}
-
-# Produce a scree plot
-wss_df <- tibble(clusters = 1:n_clusters, wss = wss)
-
-scree_plot <- ggplot(wss_df, aes(x = clusters, y = wss, group = 1)) +
-  geom_point(size = 4)+
-  geom_line() +
-  scale_x_continuous(breaks = c(2, 4, 6, 8, 10)) +
-  xlab('Number of clusters')
-scree_plot
-
-#looks like 4 groups
-# Select number of clusters
-k <- 4
-set.seed(123)
-# Build model with k clusters: km.out
-km.out <- kmeans(df_anom_precip_2cols, centers = k, nstart = 20)
-
-df_anom_precip$cluster_id <- factor(km.out$cluster)
-ggplot(df_anom_precip, aes(prec,VSWC.diff, color = cluster_id)) +
-  geom_point(alpha = 0.25) +
-  xlab("Precipitation") +
-  ylab("Soil Moisture Anomaly")
-
-cluster_id <- df_anom_precip$cluster_id
-#'now that I have the groupings, I am putting the groupingd back onto a dataframe
-#'with more intuitive variables
-
-
-
-df_anom_precip <- df_anom_precip[, c("prec", "VSWC.diff","VSWC.mean.shift")]
-
-df_anom_precip <- na.omit(df_anom_precip)
-
-df_anom_precip <- df_anom_precip %>% filter(prec >= 1)
-
-df_anom_precip$cluster_id <- as.numeric(cluster_id)
-
-
-
-
-
-plot(df_anom_precip$prec,df_anom_precip$VSWC.diff,
-     col = alpha(ifelse(df_anom_precip$VSWC.mean.shift >0,"deepskyblue3","lightsalmon4"), 0.7),
-     pch = df_anom_precip$cluster_id,
-     lwd =1.5,
-     xlab = "Precipitation [mm]",
-     ylab = "Soil Moisture Anomaly Difference",
-     ylim = c(-.1,.1)
-     )
-abline(h=0,lwd =1.5,lty =2)
-abline(v=2.8, lty =3, col ="darkgrey",lwd=1.5)
-abline(v=14.6,lty =3, col ="darkgrey",lwd =1.5)
-abline(v=25.5,lty =3, col ="darkgrey",lwd =1.5)
-legend(60,-.05,legend=c("Cluster 1","Cluster 2","Cluster 3","Cluster 4"),
-       col= "darkgrey",
-       pch=c(2,4,1,3), ncol=1,cex=1, bty = "n", pt.lwd = 1.5)
-legend(80,-.06,legend=c("Wetter","Drier"),
-       col= c("deepskyblue3","lightsalmon4"),
-       pch=c(15,15), ncol=1,cex=1, bty = "n", pt.lwd = 1.5)
-title("Soil Moisture Response to Rain Events")
-subtitle = "HARV June - September of 2017-2023"
-mtext(subtitle)
-par(new = TRUE)
-plot(df_anom_precip$prec,df_anom_precip$VSWC.diff,
-     col = alpha(ifelse(df_anom_precip$VSWC.mean.shift >0,"deepskyblue3","lightsalmon4"), 0.7),
-     pch = df_anom_precip$cluster_id,
-     lwd =1.5,
-     xlab = "",
-     ylab = "Soil Moisture Anomaly Difference",
-     ylim = c(-.1,.1)
-)
-text(0, .1, substitute(paste('25%')), col ="darkgrey")
-text(8.5, .1, substitute(paste('75%')), col ="darkgrey")
-text(20, .1, substitute(paste('90%')), col ="darkgrey")
-text(60, .1, substitute(paste('Top 10% of Storms')), col ="darkgrey")
-
-####CLUSTER COMPARISON###
-
-#ANOVA#
-data <- data.frame(
-  Group = factor(c("A", "A", "B", "B", "C", "C")),
-  Score = c(5, 6, 7, 8, 9, 10)
-)
-
-#soil moisture efficiency plot
-
-df_anom_precip_test <- df_anom_precip
-
-
-df_anom_precip_test <- df_anom_precip_test %>% filter(VSWC.diff > 0)
-
-Kendall(df_anom_precip_test$prec,df_anom_precip_test$VSWC.diff)
-cor.test(df_anom_precip_test$prec,df_anom_precip_test$VSWC.diff)
-
-plot(df_anom_precip_test$prec,df_anom_precip_test$VSWC.diff)
-abline(lm(df_anom_precip_test$VSWC.diff~df_anom_precip_test$prec))
-summary(lm(df_anom_precip_test$VSWC.diff~df_anom_precip_test$prec))
-
-
-
-#Soil Moisture
-
-df_anom_precip$cluster_id<-as.character(df_anom_precip$cluster_id)
-
-anova_model <- aov(VSWC.diff ~ cluster_id, data = df_anom_precip)
-
-summary(anova_model)
-
-posthoc_results <- TukeyHSD(anova_model)
-print(posthoc_results)
-
-
-plot(anova_model, 2)   # Q-Q plot
-
-
-#Precip
-
-anova_model <- aov(prec ~ cluster_id, data = df_anom_precip)
-
-summary(anova_model)
-#Yet, the precip means between all groups is, p = .00218
-
-posthoc_results <- TukeyHSD(anova_model)
-print(posthoc_results)
-
-
-plot(anova_model, 2) 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Perform independent t-test
-
-#wetter, wettest first
-cluster3 <- df_anom_precip %>% filter(cluster_id == 3)
-cluster3 <- cluster3$VSWC.diff
-cluster1 <- df_anom_precip %>% filter(cluster_id == 1)
-cluster1 <- cluster1$VSWC.diff
-
-#dryer, driest first
-cluster2 <- df_anom_precip %>% filter(cluster_id == 2)
-cluster2 <- cluster2$VSWC.diff
-cluster4 <- df_anom_precip %>% filter(cluster_id == 4)
-cluster4 <- cluster4$prec
-  
-result <- t.test(cluster4, cluster2)
-
-# Print the result
-print(result)
-
-median(cluster3)
-median(cluster1)
-median(cluster4)
-median(cluster2)
-
-
-
-
-
-
-
-
-
-
-
-
 ######################################################
 ####Start here after generating soil moisture data####
 ######################################################
@@ -488,7 +283,6 @@ hf300_05_daily_m <- hf300_05_daily_m %>% filter(year >1972 )
 hf300_05_daily_m <- hf300_05_daily_m %>% filter(prec > 1 )
 
 rain_quant <- hf300_05_daily_m$prec %>% quantile(prob=c(.25,.5,.75,.90,.95), type=1)
-
 
 
 #####REFINED RAIN EVENT SESNSING####
@@ -525,7 +319,6 @@ for (i in 1:nrow(df_anom_sm_prec)) {
     }
   }
 }
-
 
 
 
@@ -594,27 +387,12 @@ results$y_pred <- pred$fit
 ####Logistic fit###
 
 SM.logistic = nls(sm_diff ~ (K * S0) / (S0 + (K - S0) * exp(-r * precipitation)),
-                  start = list(S0 = .01, r = 0.02, K = 0.2),
+                  start = list(S0 = .001, r = 0.09, K = 0.2),
                   data = results, trace = TRUE)
 
 summary(SM.logistic)
 
 results_test <- results %>% filter(initial_soil_moisture >0)
-
-SM.logistic_dry = nls(sm_diff ~ (K * S0) / (S0 + (K - S0) * exp(-r * precipitation)),
-                  start = list(S0 = .01, r = 0.02, K = 0.2),
-                  data = results_test, trace = TRUE)
-
-summary(SM.logistic_dry)
-
-
-results_test <- results %>% filter(initial_soil_moisture < 0)
-
-SM.logistic_dry = nls(sm_diff ~ (K * S0) / (S0 + (K - S0) * exp(-r * precipitation)),
-                      start = list(S0 = .01, r = 0.02, K = 0.2),
-                      data = results_test, trace = TRUE)
-
-summary(SM.logistic_dry)
 
 
 
@@ -631,9 +409,6 @@ plot(plot_data$precipitation,plot_data$predicted)
 
 # Provide initial parameter estimates
 start_vals <- list(a = 10, b = 0.1)
-
-# Fit the nonlinear model using nls
-fit <- nls(y ~ nonlinear_model(x, a, b), start = start_vals)
 
 
 plot(results$precipitation, results$sm_diff,
@@ -683,194 +458,6 @@ median(results_test$sm_diff, na.rm = TRUE)
 cor.test(results_test$precipitation,results_test$sm_diff)
 
 summary(lm(results_test$sm_diff~results_test$precipitation))
-
-####How has # of days between rain increased####
-
-library(readr)
-hf300_05_daily_m <- read_csv("hf300-05-daily-m.csv")
-
-
-hf300_05_daily_m$year <- year(hf300_05_daily_m$date)
-hf300_05_daily_m$month <- month(hf300_05_daily_m$date)
-
-hf300_05_daily_m <- hf300_05_daily_m %>% filter(month > 5 & month < 10)
-hf300_05_daily_m$prec <- ifelse(hf300_05_daily_m$prec < 1, 0,hf300_05_daily_m$prec  )
-
-
-
-# Create a new column 'not_raining' to indicate days with no precipitation
-DaysOfGoodRain <- hf300_05_daily_m %>%
-  mutate(not_raining = ifelse(prec <= 20 & prec >= 8, 1, 0))
-
-# Group the data by 'year' and count the number of days with 'not_raining' == 1
-days_not_raining <- DaysWithoutRain  %>%
-  group_by(year) %>%
-  summarise(days_not_raining = sum(not_raining))
-
-
-cor.test(days_not_raining$year,days_not_raining$days_not_raining)
-plot(days_not_raining$year,days_not_raining$days_not_raining)
-
-
-results_dry<- results %>% filter(initial_soil_moisture <0)
-
-results_wet <- results %>% filter(initial_soil_moisture >0)
-
-t.test(results_dry$sm_diff,results_wet$sm_diff)
-
-mean(results_dry$sm_diff) - mean(results_wet$sm_diff, na.rm=TRUE)
-
-#####Precipitation Gini Index by Year###
-
-# Install the ineq package if it's not installed
-install.packages("ineq")
-
-# Load the package
-library(ineq)
-
-
-hf300_05_daily_m_test <- hf300_05_daily_m
-
-hf300_05_daily_m_test <- hf300_05_daily_m_test %>% filter(prec> 0)
-hf300_05_daily_m_test <- hf300_05_daily_m_test %>% filter(prec > 0)
-
-
-# Group the data by 'year' and count the number of days with 'not_raining' == 1
-Precip_Gini <- hf300_05_daily_m_test %>%
-  group_by(year) %>%
-  summarise(Gini = Gini(prec),
-            prec_sum = sum(prec))
-
-
-
-# Print the result
-plot(Precip_Gini$prec_sum,Precip_Gini$Gini)
-cor.test(Precip_Gini$year,Precip_Gini$Gini)
-"I think this doesnt work since an increasing number of small events helps increase their cumulative total"
-
-
-######PCI Index####
-install.packages("precintcon")
-library(precintcon)
-library(tidyr)
-library(dplyr)
-
-## 
-# Performing the Precipitation Concentration Index analysis
-#Must be a data set of year and month with each day of the month as a row
-
-hf300_05_daily_m_test <- hf300_05_daily_m
-hf300_05_daily_m_test$month = month(hf300_05_daily_m_test$date) 
-hf300_05_daily_m_test$day = day(hf300_05_daily_m_test$date)
-hf300_05_daily_m_test$year = year(hf300_05_daily_m_test$date) 
-
-hf300_05_daily_m_test <- data.frame(year = hf300_05_daily_m_test$year,
-                                   month = hf300_05_daily_m_test$month,
-                                    day = hf300_05_daily_m_test$day,
-                                   prec = hf300_05_daily_m_test$prec)
-
-
-PCI_df <- hf300_05_daily_m_test %>% pivot_wider(names_from = day,
-                                                values_from = prec,
-                                                values_fill = list(prec = NA))
-
-
-PCI_df <- PCI_df %>% rename_with(~ paste0("d", .x), starts_with("9"))
-
-PCI_df[PCI_df == 0] <- NA
-
-
-pci_result <- pci(as.daily(PCI_df,na.value = NA))
-
-
-plot(pci_result$year,pci_result$pci)
-
-cor.test(pci_result$year,pci_result$pci)
-
-
-
-#########PVI #######
-# Extract Year from Date
-
-
-
-# Aggregate annual precipitation
-annual_precip <- hf300_05_daily_m_test%>%
-  group_by(year) %>%
-  summarise(annual_precip = sum(prec),
-            mean_annual_precip = mean(prec),
-            sd_annual_precip = sd(prec))
-
-
-
-# Calculate PVI for each year
-annual_precip$PVI <- annual_precip$mean_annual_precip/annual_precip$sd_annual_precip 
-
-# Plot the evolution of PVI over 30 years
-ggplot(annual_precip, aes(x = year, y = PVI)) +
-  geom_line() +
-  geom_point() +
-  labs(title = "Evolution of Precipitation Variability Index (PVI) Over 30 Years",
-       x = "Year",
-       y = "PVI") +
-  theme_minimal()
-
-cor.test(annual_precip$year,annual_precip$PVI)
-summary(lm(annual_precip$PVI~annual_precip$year))
-
-
-annual_precip_1900 <- annual_precip %>% filter(year <2000)
-annual_precip_2000 <- annual_precip %>% filter(year >=2000)
-
-t.test(annual_precip_1900$PVI,annual_precip_2000$PVI)
-mean(annual_precip_2000$PVI,na.rm=TRUE) - mean(annual_precip_1900$PVI,na.rm=TRUE)
-
-
-
-##### CDD maximum number of days of consecutive dry days####
-
-
-library(readr)
-hf300_05_daily_m <- read_csv("hf300-05-daily-m.csv")
-
-
-hf300_05_daily_m$year <- year(hf300_05_daily_m$date)
-hf300_05_daily_m$month <- month(hf300_05_daily_m$date)
-
-hf300_05_daily_m <- hf300_05_daily_m %>% filter(month > 5 & month < 10)
-hf300_05_daily_m$prec <- ifelse(hf300_05_daily_m$prec < 1, 0,hf300_05_daily_m$prec  )
-
-hf300_05_daily_m$is_raining <- NA
-
-hf300_05_daily_m$is_raining <- ifelse(hf300_05_daily_m$prec >0, 1,0 )
-
-
-
-
-
-# Function to calculate the maximum consecutive 0s
-max_consecutive_zeros <- function(rain_vector) {
-  rle_result <- rle(rain_vector)
-  max_length <- max(rle_result$lengths[rle_result$values == 0], na.rm = TRUE)
-  return(max_length)
-}
-
-# Group by year and calculate the maximum consecutive days without rain
-max_days_without_rain <-hf300_05_daily_m %>%
-  group_by(year) %>%
-  summarise(max_consecutive_no_rain = max_consecutive_zeros(is_raining))
-plot(max_days_without_rain$year,max_days_without_rain$max_consecutive_no_rain)
-
-
-
-
-
-
-
-
-
-
-
 
 
 
