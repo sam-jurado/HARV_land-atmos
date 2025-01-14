@@ -25,6 +25,28 @@ The following code can be run in any order, and is not dependent on the files cr
 ## Deprecated Folder
 - This folder contains old code no longer needed to recreate the figures found in the manuscript.
 
-## Data Availability Statement 
+## Data and Software Availability
 
-Harvard Forest weather station datasets for this research are available at: (https://doi.org/10.6073/pasta/a7eb36231cbed30cea58b77af62945f1) Boose et al. (2024), and (https://doi.org/10.6073/pasta/bf7a003e4d5352d1e9069422406b6d99) Boose (2024). Hydrological station data is found at (https://doi.org/10.6073/pasta/8cd773bd8046f42e5d4bb8826fce6f24) Boose & VanScoy (2024). Soil water datasets are found at (https://doi.org/10.6073/pasta/abf59a218a5868baf5b2c073a7dd1d7f) Frey et. al. (2024). Harvard Forest Hemlock and EMS flux tower data can be found at (https://doi.org/10.6073/pasta/71a1eda9abc2cd1f7cfef62a30460136) Matthes et. al. (2024), (https://doi.org/10.6073/pasta/6835bb01e61dd0b54af75677104344c3) Munger et. al (2024), and  (https://doi.org/10.6073/pasta/56c6fe02a07e8a8aaff44a43a9d9a6a5) Munger & Wofsy (2024). NEON datasets are publicly available online, with eddy covariance products found at (https://doi.org/10.48443/j9pt-m241)  (NEON 2024a),  spectral sun photometer products found at (https://data.neonscience.org/data-products/DP1.00043.001)  (NEON 2024b), soil physical properties from (https://data.neonscience.org/data-products/DP1.00096.001/RELEASE-2024) NEON (2024c), and soil water content at (https://doi.org/10.48443/a8vy-y813) NEON(2024d). Planetary boundary layer height data is available from the NCEP North American Regional Reanalysis (NARR) website at (https://psl.noaa.gov). Code for calculating the LCL height (version 1.1) can be found at (https://doi.org/10.1175/jas-d-17-0102.1)  (Romps 2017). Code for calculating Thornthwaite water balances were sourced from the R package ClimClass, available at (https://CRAN.R-project.org/package=ClimClass) Eccel et. al (2016). All results can be reproduced using software archived on this github.
+### Harvard Forest weather station datasets
+- (https://doi.org/10.6073/pasta/a7eb36231cbed30cea58b77af62945f1) Boose et al. (2024)
+- (https://doi.org/10.6073/pasta/bf7a003e4d5352d1e9069422406b6d99) Boose (2024)
+### Hydrological station data 
+- (https://doi.org/10.6073/pasta/8cd773bd8046f42e5d4bb8826fce6f24) Boose & VanScoy (2024)
+### Harvard Forest Soil water datasets
+- (https://doi.org/10.6073/pasta/abf59a218a5868baf5b2c073a7dd1d7f) Frey et. al. (2024)
+###Harvard Forest Hemlock and EMS flux tower data
+- (https://doi.org/10.6073/pasta/71a1eda9abc2cd1f7cfef62a30460136) Matthes et. al. (2024)
+- (https://doi.org/10.6073/pasta/6835bb01e61dd0b54af75677104344c3) Munger et. al (2024)
+- (https://doi.org/10.6073/pasta/56c6fe02a07e8a8aaff44a43a9d9a6a5) Munger & Wofsy (2024)
+### NEON datasets 
+Are publicly available online
+- **eddy covariance products** found at: (https://doi.org/10.48443/j9pt-m241)
+- **spectral sun photometer** products found at: (https://data.neonscience.org/data-products/DP1.00043.001)
+- **soil physical properties** from (https://data.neonscience.org/data-products/DP1.00096.001/RELEASE-2024)
+- **soil water content** at (https://doi.org/10.48443/a8vy-y813)
+### Planetary boundary layer height data
+Is available from the NCEP North American Regional Reanalysis (NARR) website at: (https://psl.noaa.gov)
+### Software
+R code for calculating the LCL height (version 1.1) can be found at (https://doi.org/10.1175/jas-d-17-0102.1) (Romps 2017). 
+Code for calculating Thornthwaite water balances were sourced from the R package ClimClass, available at (https://CRAN.R-project.org/package=ClimClass) Eccel et. al (2016)
+All results can be reproduced using software archived on this github.
