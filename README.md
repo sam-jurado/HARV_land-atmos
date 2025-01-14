@@ -15,13 +15,15 @@ As a warmer climate enables an increase in atmospheric humidity, extreme precipi
 ## Code
 The following is the reccomended order in which to run the code.
 1. **Soil_Moisture_Final.R** This code creates Figure 5a. Additionally, the dataframes df_anom and df_anom_daily are created, which are necessary to run Evap_Perc.R and ABL_LCL_Final.R.
-2. **Evap_Perc.R** This code creates Figure 6
+2. **Evap_Perc.R** This code creates Figure 6.
 3. **ABL_LCL_Final.R** This code creates Figures 7,8 and 9.
 
 The following code can be run in any order, and is not dependent on the files created in Soil_Moisture_Final.R
-- **NEUS_pcp_sm.R** This code creates Figure 1.
+- **NEUS_pcp_sm.R** This code creates Figure 2.
 - **Precip_HF.R** This code creates Figure 10.
 - **SL_T_Final.R** This code creates Figure 4.
+- **HF-soilmoisture.R** This code creates Figure 3.
+- **HF-streamflow.R** This code creates Figure 5b.
 
 
 ## Deprecated Folder
